@@ -1,0 +1,11 @@
+# robots.txt — Master Sec. 22 / spec §41: allow all, point to sitemap; block the
+# internal /system review page AND the private admin portal (never indexed or listed).
+# Static file served by the host (no runtime generation needed).
+User-agent: *
+Allow: /
+Disallow: /system
+Disallow: /admin
+Disallow: /admin/
+Disallow: /api/admin
+
+Sitemap: https://permetheon.com/sitemap.xml

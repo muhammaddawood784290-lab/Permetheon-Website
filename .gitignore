@@ -1,0 +1,36 @@
+# OS / editor
+Thumbs.db
+.DS_Store
+*.log
+.idea/
+.vscode/
+
+# Node / Vite (frontend)
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env.*.local
+
+# Composer / Laravel (backend)
+backend/vendor/
+backend/node_modules/
+backend/.env
+backend/storage/*.key
+backend/storage/framework/cache/data/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+backend/storage/logs/*
+backend/storage/dev-serve.out
+backend/storage/dev-serve.err
+
+# E2E leftovers
+backend/storage/e2e-server.pid
+
+# Local admin credentials (never commit)
+/Admin.md
+
+# Local/deployment artifacts
+.freebuff/
+backups/
+release/
+*.zip

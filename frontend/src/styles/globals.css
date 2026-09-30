@@ -1,0 +1,119 @@
+/* ============================================================
+   PERMETHEON — DESIGN TOKENS
+   STATUS: APPROVED AS WORKING BRAND FOUNDATION (D-001, 2026-09-21)
+   REV 2 direction approved by the Business Owner: ember accent,
+   Space Grotesk display + Inter body, fluid editorial scale,
+   generous section spacing. Official brand assets may replace
+   individual tokens later without component changes (B-001 note).
+   Source: docs/DESIGN.md (Master) + docs/04_DESIGN_SYSTEM.md §2.1.
+   ============================================================ */
+
+@import "tailwindcss";
+
+@theme {
+  /* ---- COLOR SYSTEM (temporary palette) ---- */
+  /* Dark premium hero / dark services / dark CTA vs light project /
+     light case-study sections (Master Sec. 02 rhythm). */
+  --color-ink: #0b0e14; /* near-black surface (dark sections) */
+  --color-ink-soft: #12161f; /* raised dark surface (cards on dark) */
+  --color-line: #e5e7eb; /* thin borders on light */
+  --color-line-dark: #1f2530; /* thin borders on dark */
+  --color-paper: #ffffff; /* light surface */
+  --color-paper-soft: #f7f8fa; /* light raised surface */
+  --color-fog: #6b7280; /* secondary text on light */
+  --color-fog-dark: #9aa3b2; /* secondary text on dark */
+  --color-accent: #c2410c; /* primary accent — PLACEHOLDER (ember tone; replace with brand) */
+  --color-accent-strong: #9a3412; /* hover accent — PLACEHOLDER */
+
+  /* ---- TYPOGRAPHY (temporary) ---- */
+  /* Display face (self-hosted, see fonts.css) */
+  --font-display:
+    var(--font-display-family, "Inter"), ui-sans-serif, system-ui,
+    -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-body:
+    "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  /* Fluid editorial type scale (Master Sec. 02: large editorial headlines) */
+  --text-hero: clamp(2.75rem, 5.5vw + 1rem, 4.5rem); /* 44 → 72px */
+  --text-section: clamp(1.875rem, 2.5vw + 1rem, 2.75rem); /* 30 → 44px */
+  --text-lead: clamp(1.0625rem, 1vw + 0.875rem, 1.25rem); /* 17 → 20px */
+
+  /* ---- SPACING SCALE (4px base, temporary) ---- */
+  --spacing-18: 4.5rem;
+  --spacing-22: 5.5rem;
+  --spacing-30: 7.5rem;
+
+  /* ---- CONTAINERS ---- */
+  --container-prose: 44rem;
+  --container-default: 72rem;
+  --container-wide: 80rem;
+
+  /* ---- RADII ---- */
+  --radius-card: 0.75rem;
+  --radius-pill: 999px;
+
+  /* ---- MOTION (Master Sec. 18: premium but restrained) ---- */
+  --ease-intent: cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-fade-up:
+    fade-up 0.7s var(--ease-intent) both;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* ---- BASE LAYER ---- */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: var(--color-accent);
+    color: #fff;
+  }
+
+  /* Accessible focus states (Master Sec. 21) */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  /* Reduced motion (Master Sec. 21) */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* ---- SUBTLE GRID BACKGROUND (Master Sec. 15: CTA animated subtle grid) ---- */
+.grid-bg {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.05) 1px, transparent 1px);
+  background-size: 44px 44px;
+}

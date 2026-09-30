@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Title/description/canonical/OG are baked per-route by the vite-react-ssg
+      prerender — no runtime head manipulation on indexed pages.
+      The <title> below is the fallback for client-only routes (/admin, /system),
+      which are noindex.
+    -->
+    <title>Permetheon — Digital Products, Websites &amp; Business Systems</title>
+    <meta
+      name="description"
+      content="Permetheon designs and builds websites, web applications, booking platforms and custom business systems for modern businesses."
+    />
+    <!-- Brand favicon: geometric Permetheon "P" mark -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  </head>
+  <body class="min-h-screen bg-paper text-ink antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/entry.tsx" data-entry></script>
+  </body>
+</html>

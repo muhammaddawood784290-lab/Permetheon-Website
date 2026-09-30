@@ -1,0 +1,40 @@
+{
+  "name": "permetheon-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "imports": {
+    "@/*": "./src/*"
+  },
+  "description": "Permetheon public site — React 19 + TypeScript + Vite.",
+  "scripts": {
+    "dev": "vite",
+    "prebuild": "node scripts/generate-image-variants.mjs",
+    "build": "vite-react-ssg build && npm run sitemap && node scripts/generate-admin-shell.mjs && node scripts/verify-prerender.mjs",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "sitemap": "node --experimental-strip-types --no-warnings scripts/generate-sitemap.mts"
+  },
+  "dependencies": {
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-router-dom": "^6.30.6"
+  },
+  "devDependencies": {
+    "@fontsource/inter": "^5.2.5",
+    "@fontsource/space-grotesk": "^5.2.5",
+    "@tailwindcss/vite": "^4.1.11",
+    "@types/node": "^26.6.2",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.6.0",
+    "prettier": "^3.9.9",
+    "tailwindcss": "^4.1.11",
+    "typescript": "^5.8.3",
+    "vite": "^7.3.0",
+    "vite-react-ssg": "^0.9.2"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}

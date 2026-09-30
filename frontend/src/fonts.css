@@ -1,0 +1,5 @@
+/* Display face variable consumed by globals.css's --font-display token:
+   globals.css's --font-display token consumes. */
+:root {
+  --font-display-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+}

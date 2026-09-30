@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+>
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Feature">
+            <directory>tests/Feature</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>app</directory>
+        </include>
+    </source>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <env name="APP_KEY" value="base64:AUU+Ug/6xHyFnMUfp04FDiCSW+bXz7sr0rS3XZO6OTM="/>
+        <env name="APP_URL" value="http://localhost"/>
+        <!-- MySQL/MariaDB only — SQLite is not a supported application database. -->
+        <env name="DB_CONNECTION" value="mysql"/>
+        <env name="DB_HOST" value="127.0.0.1"/>
+        <env name="DB_PORT" value="3306"/>
+        <env name="DB_DATABASE" value="permetheon_test"/>
+        <env name="DB_USERNAME" value="root"/>
+        <env name="DB_PASSWORD" value=""/>
+        <!-- Database-backed cache: the rate limiters are only real when counters
+             survive across requests (a per-request array store silently
+             disables every limit — see docs/SECURITY_FINDINGS_CARRYOVER.md). -->
+        <env name="CACHE_STORE" value="database"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="MAIL_MAILER" value="array"/>
+        <env name="SESSION_DRIVER" value="array"/>
+        <env name="INQUIRY_RATE_LIMIT_MAX" value="5"/>
+        <env name="ADMIN_BOOTSTRAP_EMAIL" value="admin@permetheon.com"/>
+        <!-- Feature tests send requests from 127.0.0.1, which is declared a
+             trusted proxy here so tests can exercise BOTH rate-limit keying
+             modes: forwarded-key tests (X-Forwarded-For set) and socket-key
+             tests (no header). -->
+        <env name="TRUSTED_PROXIES" value="127.0.0.1"/>
+    </php>
+</phpunit>
