@@ -48,10 +48,15 @@ export default defineConfig({
       // would produce two <title>s and two descriptions per page (SEO bug).
       // The fallback stays in index.html for the client-only noindex routes
       // (/system, /admin*) which are served the raw index.html.
+      //
+      // LINE ENDINGS: the trailing \n must tolerate \r\n — a Windows checkout
+      // (core.autocrlf=true, no .gitattributes) materializes index.html with
+      // CRLF, and a bare-\n regex silently fails to strip, breaking the
+      // prerender verification gate (two <title>s per page).
       return html
-        .replace(/[\t ]*<!--[\s\S]*?Title\/description\/canonical\/OG are baked[\s\S]*?-->\n/g, "")
-        .replace(/[\t ]*<title>[\s\S]*?<\/title>\n/g, "")
-        .replace(/[\t ]*<meta\s+name="description"[\s\S]*?\/>\n/g, "");
+        .replace(/[\t ]*<!--[\s\S]*?Title\/description\/canonical\/OG are baked[\s\S]*?-->\r?\n/g, "")
+        .replace(/[\t ]*<title>[\s\S]*?<\/title>\r?\n/g, "")
+        .replace(/[\t ]*<meta\s+name="description"[\s\S]*?\/>\r?\n/g, "");
     },
     includedRoutes(paths) {
       // Must return PATH STRINGS (the lib filters them again). Drop the

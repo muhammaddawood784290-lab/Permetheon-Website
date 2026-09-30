@@ -1,0 +1,26 @@
+# Line endings: the repo has no cross-platform normalization, and Windows
+# clones (core.autocrlf=true) materialize CRLF where Linux build agents see
+# LF. Build-tooling regexes in vite.config.mts (onBeforePageRender strip
+# patterns) are written against \n; CRLF checkouts silently failed to strip
+# the fallback <title>/description, breaking the prerender SEO gate
+# (docs/BUILD_FAILURE_FIX.md). Normalize text sources to LF everywhere so
+# every machine builds from byte-identical sources.
+
+* text=auto eol=lf
+
+# Windows scripts must stay CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary assets — never normalize
+*.png binary
+*.webp binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.pdf binary
+*.zip binary
