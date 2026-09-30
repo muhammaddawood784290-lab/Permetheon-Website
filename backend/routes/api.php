@@ -31,9 +31,13 @@ Route::post('/inquiries', [InquiryController::class, 'store'])
 // ---------------------------------------------------------------------------
 // PUBLIC — meeting availability (read-only; booking happens through
 // POST /api/inquiries so the inquiry + meeting commit atomically)
+// READ-APPROPRIATE LIMIT: 60/min per client, NOT the inquiry form's 5/10min
+// write bucket — sharing it starved the calendar (and the form) after five
+// fetches. Keying follows the F1 clientKey rule (XFF only from trusted
+// proxies).
 // ---------------------------------------------------------------------------
 Route::get('/meetings/availability', [PublicMeetingController::class, 'availability'])
-    ->middleware(['throttle:inquiry']);
+    ->middleware(['throttle:availability']);
 
 // ---------------------------------------------------------------------------
 // ADMIN — session machine (existing)

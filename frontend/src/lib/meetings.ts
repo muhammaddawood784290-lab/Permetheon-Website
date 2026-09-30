@@ -55,16 +55,37 @@ export type MeetingBlock = {
   createdAt: string | null;
 };
 
-/** GET /api/meetings/availability — the public calendar. */
+/** GET /api/meetings/availability — the public calendar.
+ * Retries transient failures (429 throttle, 5xx, network blips) with a short
+ * backoff so a single dropped request doesn't blank the booking calendar for
+ * the whole session. Aborts immediately when the caller's signal fires. */
 export async function fetchAvailability(signal?: AbortSignal): Promise<AvailabilityPayload | null> {
-  try {
-    const res = await fetch(apiUrl("/api/meetings/availability"), { cache: "no-store", signal });
-    if (!res.ok) return null;
-    const body = (await res.json()) as { data?: { availability?: AvailabilityPayload } };
-    return body?.data?.availability ?? null;
-  } catch {
-    return null;
+  const attempts = 3;
+  let delayMs = 400;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const res = await fetch(apiUrl("/api/meetings/availability"), { cache: "no-store", signal });
+      if (res.ok) {
+        const body = (await res.json()) as { data?: { availability?: AvailabilityPayload } };
+        return body?.data?.availability ?? null;
+      }
+      // 4xx other than 429/5xx are deterministic (bad request) — don't retry.
+      if (res.status !== 429 && res.status < 500) return null;
+    } catch (err) {
+      if (signal?.aborted) return null; // caller navigated away / re-fetched
+      if (attempt === attempts) return null;
+    }
+    if (attempt === attempts) return null;
+    await new Promise((resolve) => {
+      const t = setTimeout(resolve, delayMs);
+      signal?.addEventListener("abort", () => {
+        clearTimeout(t);
+        resolve(null);
+      }, { once: true });
+    });
+    delayMs *= 2;
   }
+  return null;
 }
 
 /** "2026-09-30T10:00:00Z" → { date: "2026-09-30", time: "10:00" } (UTC text). */

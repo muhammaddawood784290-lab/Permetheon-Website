@@ -100,10 +100,11 @@ class AppServiceProvider extends ServiceProvider
             $ip = $this->clientKey($request);
 
             // 429 carries the pinned envelope, not Laravel's
-            // default HTML error page.
+            // default HTML error page. The throttle headers (Retry-After,
+            // Ratelimit-*) are MERGED so clients can honor them.
             return Limit::perMinutes(10, $max)
                 ->by('inquiry:' . $ip)
-                ->response(fn () => \App\Services\ApiResponse::rateLimited());
+                ->response(fn ($request, $headers) => \App\Services\ApiResponse::rateLimited()->withHeaders($headers));
         });
 
         RateLimiter::for('login', function (Request $request) {
@@ -115,13 +116,27 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinutes(10, 10)
                 ->by('login:' . $ip)
-                ->response(fn () => \App\Services\ApiResponse::rateLimited());
+                ->response(fn ($request, $headers) => \App\Services\ApiResponse::rateLimited()->withHeaders($headers));
         });
 
         RateLimiter::for('admin-read', function (Request $request) {
             $admin = $request->attributes->get('admin');
 
             return Limit::perMinute(120)->by('admin-read:' . ($admin?->id ?? $request->ip()));
+        });
+
+        // Public availability is a READ: it must NOT share the inquiry form's
+        // 5/10min write bucket. Sharing it meant 5 calendar fetches consumed
+        // the contact form's budget (and vice versa) — and behind a reverse
+        // proxy one shared per-IP bucket let a single visitor (or one curl
+        // loop) blank the booking calendar AND the form for EVERYONE. 60/min
+        // per client is far above any real browsing pattern, still bounded.
+        RateLimiter::for('availability', function (Request $request) {
+            $ip = $this->clientKey($request);
+
+            return Limit::perMinute(60)
+                ->by('availability:' . $ip)
+                ->response(fn ($request, $headers) => \App\Services\ApiResponse::rateLimited()->withHeaders($headers));
         });
     }
 }
