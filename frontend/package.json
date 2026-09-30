@@ -13,7 +13,8 @@
     "build": "vite-react-ssg build && npm run sitemap && node scripts/generate-admin-shell.mjs && node scripts/verify-prerender.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "sitemap": "node --experimental-strip-types --no-warnings scripts/generate-sitemap.mts"
+    "sitemap": "node --experimental-strip-types --no-warnings scripts/generate-sitemap.mts",
+    "check:image-variants": "node scripts/check-image-variants.mjs"
   },
   "dependencies": {
     "react": "^19.1.1",
