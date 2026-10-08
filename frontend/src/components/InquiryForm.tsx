@@ -41,6 +41,8 @@ const FIELD_ERROR_CONTROL: Record<keyof InquiryFieldErrors, string> = {
   budget: "inquiry-budget",
   timeline: "inquiry-timeline",
   message: "inquiry-message",
+  city: "inquiry-city",
+  country: "inquiry-country",
   form: "inquiry-form-error",
 };
 
@@ -75,6 +77,8 @@ export function InquiryForm() {
       budget: String(data.get("budget") ?? ""),
       timeline: String(data.get("timeline") ?? ""),
       message: String(data.get("message") ?? ""),
+      city: String(data.get("city") ?? ""),
+      country: String(data.get("country") ?? ""),
     };
 
     // Shared validation contract — same rules the server enforces.
@@ -270,6 +274,44 @@ export function InquiryForm() {
           available. Include the country code, e.g. +1 202 555 0147.
         </p>
         <FieldError field="contactNumber" errors={errors} />
+      </div>
+
+      <div className="grid gap-6 sm:grid-cols-2">
+        <div className="flex flex-col gap-2">
+          <label htmlFor="inquiry-city" className={labelClasses}>
+            City *
+          </label>
+          <input
+            id="inquiry-city"
+            name="city"
+            type="text"
+            placeholder="e.g. London"
+            maxLength={100}
+            className={inputClasses}
+            aria-invalid={Boolean(errors.city)}
+            aria-describedby={errors.city ? "inquiry-city-error" : undefined}
+            required
+          />
+          <FieldError field="city" errors={errors} />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label htmlFor="inquiry-country" className={labelClasses}>
+            Country *
+          </label>
+          <input
+            id="inquiry-country"
+            name="country"
+            type="text"
+            placeholder="e.g. United Kingdom"
+            maxLength={100}
+            className={inputClasses}
+            aria-invalid={Boolean(errors.country)}
+            aria-describedby={errors.country ? "inquiry-country-error" : undefined}
+            required
+          />
+          <FieldError field="country" errors={errors} />
+        </div>
       </div>
 
       <div className="flex flex-col gap-2">

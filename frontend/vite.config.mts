@@ -18,7 +18,7 @@ import { fileURLToPath } from "node:url";
  * no CORS surface and no per-request credentials hacks (map §2B-11 resolved
  * this way instead of dev-only CORS).
  */
-const laravelTarget = process.env.LARAVEL_API_URL ?? "http://localhost:8000";
+const laravelTarget = process.env.LARAVEL_API_URL ?? "http://172.29.135.97:8000";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],

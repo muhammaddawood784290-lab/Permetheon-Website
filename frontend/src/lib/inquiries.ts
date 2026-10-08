@@ -77,6 +77,8 @@ export type InquiryField =
   | "budget"
   | "timeline"
   | "message"
+  | "city"
+  | "country"
   | "form";
 
 export type InquiryFieldErrors = Partial<Record<InquiryField, string>>;
