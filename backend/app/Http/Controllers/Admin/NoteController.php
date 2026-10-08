@@ -55,7 +55,6 @@ class NoteController extends Controller
         $now = \App\Support\Clock::now();
 
         $note = InquiryNote::create([
-            'id'         => (string) Str::uuid(),
             'inquiry_id' => $id,
             'admin_id'   => $admin->id,
             'body'       => $text,

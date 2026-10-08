@@ -12,9 +12,9 @@ class AdminUser extends Model
 
     protected $table = 'admin_users';
 
-    public $incrementing = false;
+    public $incrementing = true;
 
-    protected $keyType = 'string';
+    protected $keyType = 'integer';
 
     protected $fillable = [
         'id', 'email', 'name', 'password_hash', 'role', 'is_active',

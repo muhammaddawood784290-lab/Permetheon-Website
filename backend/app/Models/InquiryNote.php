@@ -13,11 +13,11 @@ class InquiryNote extends Model
 
     protected $table = 'inquiry_notes';
 
-    public $incrementing = false;
+    public $incrementing = true;
 
-    protected $keyType = 'string';
+    protected $keyType = 'integer';
 
-    protected $fillable = ['id', 'inquiry_id', 'admin_id', 'body', 'created_at'];
+    protected $fillable = ['inquiry_id', 'admin_id', 'body', 'created_at'];
 
     public function admin()
     {
@@ -31,11 +31,11 @@ class InquiryNote extends Model
     public function toArray(): array
     {
         return [
-            'id'        => $this->id,
+            'id' => $this->id,
             'inquiryId' => $this->inquiry_id,
-            'adminId'   => $this->admin_id,
+            'adminId' => $this->admin_id,
             'adminName' => optional($this->admin)->name ?? 'Unknown',
-            'body'      => $this->body,
+            'body' => $this->body,
             'createdAt' => $this->created_at ? \App\Support\MeetingTime::toWire($this->created_at) : null,
         ];
     }

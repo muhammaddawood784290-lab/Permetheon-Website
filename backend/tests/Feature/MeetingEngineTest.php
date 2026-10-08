@@ -115,9 +115,12 @@ it('rejects booking outside working hours / non-grid times', function () {
 it('blocks: whole-day block suppresses every slot; slot block suppresses one', function () {
     $slot = futureSlot(4);
 
+    static $counter = 0;
+    $counter++;
+
     // Whole-day block.
     MeetingBlock::create([
-        'id'           => (string) Illuminate\Support\Str::uuid(),
+        'id'           => $counter,
         'blocked_date' => substr($slot, 0, 10),
         'starts_at'    => null,
         'reason'       => 'Team offsite',
@@ -135,8 +138,10 @@ it('blocks: whole-day block suppresses every slot; slot block suppresses one', f
     // forward, so two close offsets can land on the SAME day (e.g. +4 walking
     // over a weekend onto the +5 day) and the day-block would shadow this one.
     $slot2 = futureSlot(12);
+    static $counter2 = 0;
+    $counter2++;
     MeetingBlock::create([
-        'id'           => (string) Illuminate\Support\Str::uuid(),
+        'id'           => $counter2,
         'blocked_date' => null,
         'starts_at'    => \App\Support\MeetingTime::normalize($slot2),
         'reason'       => 'Holding for enterprise call',

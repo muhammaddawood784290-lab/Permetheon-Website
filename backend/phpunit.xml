@@ -21,14 +21,17 @@
         <env name="APP_ENV" value="testing"/>
         <env name="APP_KEY" value="base64:AUU+Ug/6xHyFnMUfp04FDiCSW+bXz7sr0rS3XZO6OTM="/>
         <env name="APP_URL" value="http://localhost"/>
-        <!-- MySQL/MariaDB only — SQLite is not a supported application database. -->
-        <env name="DB_CONNECTION" value="mysql"/>
-        <env name="DB_HOST" value="127.0.0.1"/>
-        <env name="DB_PORT" value="3306"/>
+        <!-- MongoDB Atlas is the application database. The suite runs against
+             the same cluster as production but a SEPARATE database
+             (MONGODB_TEST_DATABASE), so RefreshDatabase can wipe collections
+             without touching real data. MONGODB_URI / MONGODB_PASSWORD are
+             supplied by the server-side .env — never hardcoded here; PHPUnit
+             only overrides the values below, and an .env-provided URI wins
+             because config/database.php reads it first. -->
+        <env name="DB_CONNECTION" value="pgsql"/>
         <env name="DB_DATABASE" value="permetheon_test"/>
-        <env name="DB_USERNAME" value="root"/>
-        <env name="DB_PASSWORD" value=""/>
-        <!-- Database-backed cache: the rate limiters are only real when counters
+        <env name="MONGODB_DATABASE" value="permetheon_test"/>
+        <!-- Persistent cache: the rate limiters are only real when counters
              survive across requests (a per-request array store silently
              disables every limit — see docs/SECURITY_FINDINGS_CARRYOVER.md). -->
         <env name="CACHE_STORE" value="database"/>

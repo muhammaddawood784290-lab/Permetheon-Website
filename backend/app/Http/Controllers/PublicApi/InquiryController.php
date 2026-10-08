@@ -70,7 +70,6 @@ class InquiryController extends Controller
             // ATOMIC: inquiry + meeting commit together; conflict rolls back both.
             $result = DB::transaction(function () use ($canonical, $now, $availability, $meetingWanted, $meetingStartsAt) {
                 $inquiry = BusinessInquiry::create(array_merge($canonical, [
-                    'id'         => (string) Str::uuid(),
                     'status'     => 'NEW',
                     'priority'   => 'MEDIUM', // DEFAULT_PRIORITY
                     'created_at' => $now,

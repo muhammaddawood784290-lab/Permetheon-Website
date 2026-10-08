@@ -30,21 +30,22 @@ class MeetingController extends Controller
         $to = $request->query('to');
         $status = $request->query('status');
 
-        $query = Meeting::query()
-            ->join('business_inquiries', 'business_inquiries.id', '=', 'meetings.inquiry_id')
-            ->selectRaw('meetings.*, business_inquiries.name as customer_name, business_inquiries.company as customer_company, business_inquiries.email as customer_email, business_inquiries.contact_number as customer_contact, business_inquiries.project_type as project_type');
+        // MongoDB: the customer fields come from an eager-loaded belongsTo
+        // ($lookup) rather than a SQL JOIN + selectRaw aliases — the driver
+        // has no column-alias projection. Same JSON contract in present().
+        $query = Meeting::query()->with('inquiry');
 
         if (is_string($from) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) {
-            $query->where('meetings.starts_at', '>=', $from . ' 00:00:00.000');
+            $query->where('starts_at', '>=', $from . ' 00:00:00.000');
         }
         if (is_string($to) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) {
-            $query->where('meetings.starts_at', '<=', $to . ' 23:59:59.999');
+            $query->where('starts_at', '<=', $to . ' 23:59:59.999');
         }
         if (is_string($status) && in_array($status, Meeting::STATUSES, true)) {
-            $query->where('meetings.status', $status);
+            $query->where('status', $status);
         }
 
-        $meetings = $query->orderBy('meetings.starts_at')->get();
+        $meetings = $query->orderBy('starts_at')->get();
 
         // Group by UTC date for the calendar views — UTC is the only calendar
         // basis; nothing is derived from the admin's browser timezone.
@@ -75,7 +76,7 @@ class MeetingController extends Controller
     /** Update status with validated transitions (spec §6). */
     public function updateStatus(Request $request, string $id): JsonResponse
     {
-        $meeting = Meeting::find($id);
+        $meeting = Meeting::with('inquiry')->find($id);
         if ($meeting === null) {
             return ApiResponse::notFound('Meeting not found.');
         }
@@ -110,7 +111,7 @@ class MeetingController extends Controller
             'status' => $status, 'reason' => $status === 'CANCELLED' ? ($body['reason'] ?? null) : null,
         ]);
 
-        return ApiResponse::ok(['meeting' => $this->present($meeting->fresh())]);
+        return ApiResponse::ok(['meeting' => $this->present($meeting->fresh()->load('inquiry'))]);
     }
 
     /** Cancel = status transition to CANCELLED with a reason (spec §6/§7). */
@@ -269,7 +270,6 @@ class MeetingController extends Controller
         }
 
         $block = MeetingBlock::create([
-            'id' => (string) Str::uuid(),
             'blocked_date' => $date,
             'starts_at' => $startsAt,
             'reason' => $reason,
@@ -299,12 +299,11 @@ class MeetingController extends Controller
 
     // ------------------------------------------------------------------ helpers
 
-    private function findWithInquiry(string $id): ?object
+    private function findWithInquiry(string $id): ?Meeting
     {
         return Meeting::query()
-            ->join('business_inquiries', 'business_inquiries.id', '=', 'meetings.inquiry_id')
-            ->selectRaw('meetings.*, business_inquiries.name as customer_name, business_inquiries.company as customer_company, business_inquiries.email as customer_email, business_inquiries.contact_number as customer_contact, business_inquiries.project_type as project_type')
-            ->where('meetings.id', $id)
+            ->with('inquiry')
+            ->where('id', $id)
             ->first();
     }
 
@@ -319,8 +318,11 @@ class MeetingController extends Controller
         return MeetingTime::toWire($carbon);
     }
 
-    private function present(object $m): array
+    private function present(Meeting $m): array
     {
+        // The customer block comes from the eager-loaded inquiry ($lookup).
+        $inquiry = $m->relationLoaded('inquiry') ? $m->getRelation('inquiry') : null;
+
         // startsAt MUST be strict ISO 8601 UTC ('Y-m-d\TH:i:s\Z') — an instant,
         // never an ambiguous wall string. Clients slice nothing; re-booking
         // sends the value back and MeetingTime::normalize accepts it.
@@ -339,12 +341,12 @@ class MeetingController extends Controller
             'cancelledReason' => $m->cancelled_reason ?? '',
             'cancelledAt' => $this->wire($m->cancelled_at),
             'customer' => [
-                'name' => $m->customer_name,
-                'company' => $m->customer_company,
-                'email' => $m->customer_email,
-                'contactNumber' => $m->customer_contact,
+                'name' => $inquiry?->name,
+                'company' => $inquiry?->company,
+                'email' => $inquiry?->email,
+                'contactNumber' => $inquiry?->contact_number,
             ],
-            'projectType' => $m->project_type,
+            'projectType' => $inquiry?->project_type,
         ];
     }
 }

@@ -22,8 +22,10 @@ function gapBootstrapAdmin(): void
         return;
     }
 
+    static $counter = 0;
+    $counter++;
     AdminUser::create([
-        'id'                 => (string) Str::uuid(),
+        'id'                 => $counter,
         'email'              => strtolower(GAP_ADMIN_EMAIL),
         'name'               => 'Owner',
         'password_hash'      => Hash::make(GAP_ADMIN_PASSWORD),

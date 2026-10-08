@@ -22,6 +22,10 @@ use App\Support\Clock;
 use App\Support\PasswordPolicy;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Mockery;
+
+
+
 
 // ---------------------------------------------------------------- F7 ---
 
@@ -97,11 +101,23 @@ it('F4: admin:unlock clears an active lock so the account can log in again', fun
     $admin->locked_until = Clock::offset(15 * 60);
     $admin->save();
 
-    Log::shouldReceive('warning')->atLeast()->once();
+    Log::spy();
+
+    // Pre-allow log levels other than 'warning' that this test run may touch
+    // (framework exception handler, scheduler, cache misses, etc.). Without these
+    // the spy rejects any un-expected level and the test fails on noise rather
+    // than on the behavior under test.
+    foreach (['error', 'critical', 'notice', 'debug', 'emergency', 'alert', 'info'] as $level) {
+        Mockery::allow('Illuminate\Support\Facades\LogManager')->toReceive($level);
+    }
 
     $this->artisan('admin:unlock', ['email' => 'owner@permetheon.test'])
         ->expectsOutputToContain('Lock cleared')
         ->assertSuccessful();
+
+    Log::assertHaveReceived('warning', 'admin.lockout.cleared', Mockery::on(function ($ctx) {
+        return $ctx['email'] === 'owner@permetheon.test';
+    }));
 
     $admin->refresh();
     expect($admin->locked_until)->toBeNull()
@@ -115,9 +131,22 @@ it('F4: admin:unlock clears an active lock so the account can log in again', fun
 it('F4: the lock engages after 5 failures and is visible in the log; unknown email fails cleanly', function () {
     $admin = ownerFixtureForHardening();
 
-    // Spy (not a mock): the unlock command ALSO logs 'admin.lockout.cleared'
-    // and a strict mock would reject it. The spy records and asserts.
+    // Spy: record every Log::warning call so both the lockout-engaged and
+    // lockout-cleared lines can be asserted without a strict mock rejecting them.
     Log::spy();
+
+    // Pre-allow log levels other than 'warning' that this test run may touch
+    // (framework exception handler, scheduler, cache misses, etc.). Without these
+    // the spy rejects any un-expected level and the test fails on noise rather
+    // than on the behavior under test.
+    foreach (['error', 'critical', 'notice', 'debug', 'emergency', 'alert', 'info'] as $level) {
+        Mockery::allow('Illuminate\Support\Facades\LogManager')->toReceive($level);
+    }
+
+    // Also pre-clear whatever stale expectations the previous test left on the
+    // logger so this spy starts from a clean state (Mockery spies are shared
+    // across the test lifecycle).
+    Mockery::close();
 
     for ($i = 0; $i < 5; $i++) {
         $this->postJson('/api/admin/auth/login', ['email' => 'owner@permetheon.test', 'password' => 'wrong'])
@@ -184,7 +213,6 @@ function ownerFixtureForHardening(): AdminUser
     }
 
     return AdminUser::create([
-        'id'                 => (string) Illuminate\Support\Str::uuid(),
         'email'              => 'owner@permetheon.test',
         'name'               => 'Owner',
         'password_hash'      => Hash::make('hardening-passphrase'),

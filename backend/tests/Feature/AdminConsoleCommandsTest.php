@@ -16,8 +16,10 @@ use Illuminate\Support\Str;
 
 function commandSeedAdmin(string $email = 'owner@permetheon.test', string $role = 'SUPER_ADMIN'): AdminUser
 {
+    static $counter = 0;
+    $counter++;
     return AdminUser::create([
-        'id'                 => (string) Str::uuid(),
+        'id'                 => $counter,
         'email'              => strtolower($email),
         'name'               => 'Owner',
         'password_hash'      => Hash::make('original-passphrase'),

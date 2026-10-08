@@ -32,8 +32,10 @@ if (! function_exists('futureSlot')) {
 if (! function_exists('createInquiry')) {
     function createInquiry(string $name = 'Meeting Tester'): App\Models\BusinessInquiry
     {
+        static $counter = 0;
+        $counter++;
         return App\Models\BusinessInquiry::create([
-            'id'             => (string) Illuminate\Support\Str::uuid(),
+            'id'             => $counter,
             'name'           => $name,
             'company'        => '',
             'email'          => 'meeting@example.com',

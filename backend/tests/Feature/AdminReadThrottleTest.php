@@ -22,8 +22,10 @@ const F6_PASSWORD = 'super-secret-passphrase';
 
 function f6CreateAdmin(string $email): void
 {
+    static $counter = 0;
+    $counter++;
     App\Models\AdminUser::create([
-        'id'                 => Illuminate\Support\Str::uuid()->toString(),
+        'id'                 => $counter,
         'email'              => strtolower($email),
         'name'               => 'Admin ' . $email,
         'password_hash'      => Illuminate\Support\Facades\Hash::make(F6_PASSWORD),

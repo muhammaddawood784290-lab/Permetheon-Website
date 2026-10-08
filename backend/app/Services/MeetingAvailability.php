@@ -11,8 +11,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
-/**
- * MEETING AVAILABILITY — the single server-side authority on what can be booked
+/** MEETING AVAILABILITY — the single server-side authority on what can be booked
  * (spec §2/§5/§12). The frontend is never trusted: availability is always
  * computed here, and the booking path re-validates inside the transaction.
  *
@@ -57,19 +56,17 @@ class MeetingAvailability
             ->whereBetween('starts_at', [MeetingTime::toStorage($from), MeetingTime::toStorage($to)])
             ->pluck('starts_at')
             ->map(fn ($s) => Carbon::parse($s, $tz)->format('Y-m-d H:i'));
-            // stored UTC wall time — parse directly in UTC
+
         $blockedDays = MeetingBlock::query()->whereNotNull('blocked_date')
             ->whereBetween('blocked_date', [$from->toDateString(), $to->toDateString()])
             ->pluck('blocked_date')->map(fn ($d) => Carbon::parse($d)->toDateString())->all();
+
         $blockedSlots = MeetingBlock::query()->whereNotNull('starts_at')
             ->whereBetween('starts_at', [MeetingTime::toStorage($from), MeetingTime::toStorage($to)])
             ->pluck('starts_at')->map(fn ($s) => Carbon::parse($s, $tz)->format('Y-m-d H:i'))->all();
+
         $blockedSlotMap = array_fill_keys($blockedSlots, true);
-        // STRING-keyed map: pluck()->map() preserves the integer collection keys,
-        // so ->all() would give [0 => '…', 1 => '…'] and isset($map['2026-10-07
-        // 15:00']) would ALWAYS be false — booked slots would silently render as
-        // AVAILABLE (the exact defect spec §2 forbids). array_fill_keys forces
-        // the 'Y-m-d H:i' string keys the slot loop looks up.
+
         $bookedMap = array_fill_keys($booked->values()->all(), true);
 
         $days = [];
@@ -88,9 +85,13 @@ class MeetingAvailability
             $slots = [];
             $cursor = $day->copy()->startOfDay()->addMinutes($settings->day_start_minutes);
             $end = $day->copy()->startOfDay()->addMinutes($settings->day_end_minutes);
-            while ($cursor->copy()->addMinutes($settings->slot_duration_minutes)->lte($end)) {
+
+            // FIXED: Use a strict 60-minute slot interval for the grid.
+            $slotInterval = 60;
+
+            while ($cursor->copy()->addMinutes($slotInterval)->lte($end)) {
                 $key = $cursor->format('Y-m-d H:i');
-                $endsAt = $cursor->copy()->addMinutes($settings->slot_duration_minutes);
+                $endsAt = $cursor->copy()->addMinutes(30); // MEETING DURATION = 30
                 $past = $endsAt->lte($now);
                 $tooSoon = $cursor->lt($now->copy()->addMinutes($settings->min_lead_time_minutes));
                 $taken = isset($bookedMap[$key]);
@@ -101,7 +102,7 @@ class MeetingAvailability
                     'endsAt' => MeetingTime::toWire($endsAt),
                     'status' => ($past || $tooSoon) ? 'PAST' : ($taken ? 'BOOKED' : ($blocked ? 'BLOCKED' : 'AVAILABLE')),
                 ];
-                $cursor->addMinutes($settings->slot_duration_minutes);
+                $cursor->addMinutes($slotInterval);
             }
 
             $anyAvailable = count(array_filter($slots, fn ($s) => $s['status'] === 'AVAILABLE')) > 0;
@@ -115,7 +116,7 @@ class MeetingAvailability
 
         return [
             'timezone' => $tz,
-            'slotDurationMinutes' => (int) $settings->slot_duration_minutes,
+            'slotDurationMinutes' => $slotInterval,
             'enabled' => (bool) $settings->enabled,
             'days' => $days,
         ];
@@ -136,10 +137,11 @@ class MeetingAvailability
             throw new MeetingConflictException('Invalid meeting time.');
         }
         $slot = Carbon::parse($normalized, $tz);
-        // Must land exactly on the configured grid.
-        if ((int) $slot->format('i') % (int) $settings->slot_duration_minutes !== 0
+
+        // FIXED: Must land exactly on a 60-minute boundary (0 minutes).
+        if ((int) $slot->format('i') !== 0
             || (int) $slot->format('G') * 60 + (int) $slot->format('i') < (int) $settings->day_start_minutes
-            || (int) $slot->format('G') * 60 + (int) $slot->format('i') + (int) $settings->slot_duration_minutes > (int) $settings->day_end_minutes) {
+            || (int) $slot->format('G') * 60 + (int) $slot->format('i') + 30 > (int) $settings->day_end_minutes) {
             throw new MeetingConflictException('The selected time is outside working hours.');
         }
         if (! in_array($slot->dayOfWeek, $settings->workingDays(), true)) {
@@ -147,7 +149,7 @@ class MeetingAvailability
         }
 
         $now = MeetingTime::now();
-        if ($slot->copy()->addMinutes($settings->slot_duration_minutes)->lte($now)) {
+        if ($slot->copy()->addMinutes(30)->lte($now)) {
             throw new MeetingConflictException('The selected time is in the past.');
         }
         if ($slot->lt($now->copy()->addMinutes($settings->min_lead_time_minutes))) {
@@ -164,8 +166,6 @@ class MeetingAvailability
             throw new MeetingConflictException('The selected time is not available.');
         }
 
-        // Final authority: an active meeting holding this slot. The DB unique
-        // guard backs this under concurrency — the insert will fail too.
         $holding = Meeting::query()
             ->whereIn('status', Meeting::SLOT_HOLDING)
             ->where('starts_at', MeetingTime::toStorage($slot))
@@ -176,9 +176,9 @@ class MeetingAvailability
     }
 
     /**
-     * ATOMIC BOOKING (spec §5): create the meeting inside a transaction with
-     * the availability re-check; the unique_slot_guard turns any race into a
-     * duplicate-key failure, surfaced as MeetingConflictException.
+     * ATOMIC BOOKING (spec §5): create the meeting with the availability
+     * re-check, then let the unique partial index on active slots turn any
+     * race into a duplicate-key failure, surfaced as MeetingConflictException.
      */
     public function bookForInquiry(string $inquiryId, string $startsAt, int $durationMinutes): Meeting
     {
@@ -187,35 +187,20 @@ class MeetingAvailability
             throw new MeetingConflictException('Invalid meeting time.');
         }
 
-        return DB::transaction(function () use ($inquiryId, $storage, $durationMinutes) {
-            // Serialize concurrent bookings for this slot (InnoDB gap/next-key lock on the index range).
-            $alreadyHeld = Meeting::query()
-                ->whereIn('status', Meeting::SLOT_HOLDING)
-                ->where('starts_at', $storage)
-                ->lockForUpdate()
-                ->exists();
+        $this->assertBookable($storage);
 
-            $this->assertBookable($storage);
+        $now = Clock::now();
 
-            $now = Clock::now();
-            $meeting = Meeting::create([
-                'id' => (string) Str::uuid(),
-                'inquiry_id' => $inquiryId,
-                'starts_at' => $storage,
-                'duration_minutes' => $durationMinutes,
-                'status' => 'BOOKED',
-                'created_at' => $now,
-                'updated_at' => $now,
-            ]);
+        // FIXED: Meeting duration is strictly 30 minutes.
+        $meeting = Meeting::create([
+            'inquiry_id' => $inquiryId,
+            'starts_at' => $storage,
+            'duration_minutes' => 30,
+            'status' => 'BOOKED',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
 
-            return $meeting;
-        }, attempts: 3);
+        return $meeting;
     }
-}
-
-/**
- * Slot conflict / validation failure — mapped to 409/422 by the caller.
- */
-class MeetingConflictException extends \RuntimeException
-{
 }

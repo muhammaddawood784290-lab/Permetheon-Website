@@ -17,8 +17,10 @@ function bootstrapAdmin(): void
     }
 
     // Mint the super admin directly (as the bootstrap would).
+    static $counter = 0;
+    $counter++;
     App\Models\AdminUser::create([
-        'id'                 => Illuminate\Support\Str::uuid()->toString(),
+        'id'                 => $counter,
         'email'              => strtolower(ADMIN_EMAIL),
         'name'               => 'Owner',
         'password_hash'      => Illuminate\Support\Facades\Hash::make(ADMIN_PASSWORD),

@@ -26,11 +26,13 @@ const F3_PASSWORD = 'super-secret-passphrase';
 
 function f3CreateAdmin(): void
 {
+    static $counter = 0;
+    $counter++;
     if (App\Models\AdminUser::where('email', F3_EMAIL)->exists()) {
         return;
     }
     App\Models\AdminUser::create([
-        'id'                 => Illuminate\Support\Str::uuid()->toString(),
+        'id'                 => $counter,
         'email'              => strtolower(F3_EMAIL),
         'name'               => 'Owner',
         'password_hash'      => Illuminate\Support\Facades\Hash::make(F3_PASSWORD),

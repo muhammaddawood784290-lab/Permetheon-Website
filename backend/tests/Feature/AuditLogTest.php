@@ -19,13 +19,15 @@ const F5_PASSWORD = 'audit-log-passphrase';
 
 function f5SeedAdmins(): array
 {
+    static $counter = 0;
     $mk = function (string $email, string $role): AdminUser {
         $existing = AdminUser::where('email', $email)->first();
         if ($existing) {
             return $existing;
         }
+        $counter++;
         return AdminUser::create([
-            'id'                 => (string) Illuminate\Support\Str::uuid(),
+            'id'                 => $counter,
             'email'              => $email,
             'name'               => ucfirst($role),
             'password_hash'      => Hash::make(F5_PASSWORD),
@@ -63,8 +65,10 @@ function f5Write($test, array $auth, string $method, string $path, array $body =
 
 function f5Inquiry(): App\Models\BusinessInquiry
 {
+    static $counter = 0;
+    $counter++;
     return App\Models\BusinessInquiry::create([
-        'id'             => (string) Illuminate\Support\Str::uuid(),
+        'id'             => $counter,
         'name'           => 'Audit Probe',
         'company'        => '',
         'email'          => 'audit-probe@example.com',

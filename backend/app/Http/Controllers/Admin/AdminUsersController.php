@@ -68,7 +68,6 @@ class AdminUsersController extends Controller
 
         $now = Clock::now();
         $admin = AdminUser::create([
-            'id'                 => (string) Str::uuid(),
             'email'              => $fields['email'],
             'name'               => $fields['name'],
             'password_hash'      => \Illuminate\Support\Facades\Hash::make($fields['password']),
@@ -204,7 +203,7 @@ class AdminUsersController extends Controller
         }
 
         $password = is_string($body['password'] ?? null) ? $body['password'] : '';
-        if (! \App\Support\PasswordPolicy::isValid($password)) {
+        if (!\App\Support\PasswordPolicy::isValid($password)) {
             $errors['password'] = \App\Support\PasswordPolicy::MESSAGE;
         }
 

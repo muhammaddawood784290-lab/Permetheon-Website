@@ -2,7 +2,7 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "permetheon/backend",
     "type": "project",
-    "description": "Permetheon V3 backend — Laravel 12 API + MySQL (serves the built Vite SPA).",
+    "description": "Permetheon V3 backend — Laravel 12 API + PostgreSQL (serves the built Vite SPA).",
     "keywords": ["laravel", "api", "permetheon"],
     "license": "MIT",
     "require": {

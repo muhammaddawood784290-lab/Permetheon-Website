@@ -81,7 +81,6 @@ class AdminAuthService
         $now = Clock::now();
 
         AdminUser::create([
-            'id'            => (string) Str::uuid(),
             'email'         => $bootstrapEmail,
             'name'          => 'Administrator',
             'password_hash' => Hash::make($password),
@@ -184,12 +183,14 @@ class AdminAuthService
     public function createSession(string $adminId): string
     {
         $token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
+        $tokenHash = hash('sha256', $token);
 
         AdminSession::create([
-            'id'                  => hash('sha256', $token),
-            'admin_id'            => $adminId,
-            'created_at'          => Clock::now(),
-            'last_seen_at'        => Clock::now(),
+            'id'            => $tokenHash,
+            'token_hash'    => $tokenHash,
+            'admin_id'      => $adminId,
+            'created_at'    => Clock::now(),
+            'last_seen_at'  => Clock::now(),
             'absolute_expires_at' => Clock::offset(24 * 60 * 60),
         ]);
 
