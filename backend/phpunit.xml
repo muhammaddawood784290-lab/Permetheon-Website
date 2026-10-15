@@ -28,9 +28,13 @@
              supplied by the server-side .env — never hardcoded here; PHPUnit
              only overrides the values below, and an .env-provided URI wins
              because config/database.php reads it first. -->
-        <env name="DB_CONNECTION" value="pgsql"/>
-        <env name="DB_DATABASE" value="permetheon_test"/>
-        <env name="MONGODB_DATABASE" value="permetheon_test"/>
+        <env name="DB_CONNECTION" value="pgsql" force="true"/>
+        <env name="DB_HOST" value="127.0.0.1" force="true"/>
+        <env name="DB_PORT" value="54322" force="true"/>
+        <env name="DB_DATABASE" value="permetheon_test" force="true"/>
+        <env name="DB_USERNAME" value="postgres" force="true"/>
+        <env name="DB_PASSWORD" value="postgres" force="true"/>
+        <env name="DB_SSLMODE" value="prefer" force="true"/>
         <!-- Persistent cache: the rate limiters are only real when counters
              survive across requests (a per-request array store silently
              disables every limit — see docs/SECURITY_FINDINGS_CARRYOVER.md). -->

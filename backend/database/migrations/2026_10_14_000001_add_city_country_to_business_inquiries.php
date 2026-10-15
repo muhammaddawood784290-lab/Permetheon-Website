@@ -27,10 +27,10 @@ return new class extends Migration
 
         Schema::table('business_inquiries', function (Blueprint $table) {
             if (! Schema::hasColumn('business_inquiries', 'city')) {
-                $table->string('city', 100)->nullable()->after('contact_number');
+                $table->string('city', 100)->nullable();
             }
             if (! Schema::hasColumn('business_inquiries', 'country')) {
-                $table->string('country', 100)->nullable()->after('city');
+                $table->string('country', 100)->nullable();
             }
         });
 
