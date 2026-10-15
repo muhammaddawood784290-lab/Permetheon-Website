@@ -17,6 +17,7 @@
     "check:image-variants": "node scripts/check-image-variants.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.117.3",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^6.30.6"
