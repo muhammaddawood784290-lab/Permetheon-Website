@@ -39,6 +39,12 @@ return [
             'serialize' => false,
         ],
 
+        /*
+        | The rate limiters (inquiry / login / admin-read / availability) run
+        | off this store, so it must be shared across requests — never "array".
+        | The SQL 'database' store is the only backend required for this
+        | workspace; it is created by 0001_01_01_000001.
+        */
         'database' => [
             'driver' => 'database',
             'connection' => env('DB_CACHE_CONNECTION'),

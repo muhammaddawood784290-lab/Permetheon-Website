@@ -4,14 +4,11 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-/**
- * SESSIONS TABLE — present for framework completeness (SESSION_DRIVER=database).
+/** SESSIONS TABLE — present for framework completeness (SESSION_DRIVER=database).
  *
- * The admin authentication system does NOT use it: admin sessions live in the
- * dedicated admin_sessions table with SHA-256-hashed opaque tokens, a sliding
- * 30-minute idle window and a 24-hour absolute lifetime
- * (App\Services\AdminAuthService). Laravel's session machinery is disabled on
- * both the web and API middleware stacks (bootstrap/app.php).
+ * Laravel's session machinery persists session data here. The admin custom
+ * guard does NOT use this table (admin sessions live in admin_sessions); the
+ * session driver is used by the framework's own session needs only.
  */
 return new class extends Migration
 {

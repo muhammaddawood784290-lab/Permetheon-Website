@@ -19,13 +19,15 @@ const F5_PASSWORD = 'audit-log-passphrase';
 
 function f5SeedAdmins(): array
 {
-    $mk = function (string $email, string $role): AdminUser {
+    static $counter = 0;
+    $mk = function (string $email, string $role) use (&$counter): AdminUser {
         $existing = AdminUser::where('email', $email)->first();
         if ($existing) {
             return $existing;
         }
+        $counter++;
         return AdminUser::create([
-            'id'                 => (string) Illuminate\Support\Str::uuid(),
+            'id'                 => $counter,
             'email'              => $email,
             'name'               => ucfirst($role),
             'password_hash'      => Hash::make(F5_PASSWORD),
@@ -63,8 +65,10 @@ function f5Write($test, array $auth, string $method, string $path, array $body =
 
 function f5Inquiry(): App\Models\BusinessInquiry
 {
+    static $counter = 0;
+    $counter++;
     return App\Models\BusinessInquiry::create([
-        'id'             => (string) Illuminate\Support\Str::uuid(),
+        'id'             => $counter,
         'name'           => 'Audit Probe',
         'company'        => '',
         'email'          => 'audit-probe@example.com',
@@ -109,7 +113,7 @@ it('F5: inquiry update and delete leave audit rows with actor, action and resour
         ->and($update->admin_id)->toBe($auth['admin']->id)
         ->and($update->admin_email)->toBe(strtolower(F5_OWNER_EMAIL))
         ->and($update->resource_type)->toBe('inquiry')
-        ->and($update->resource_id)->toBe($inquiry->id)
+        ->and((int) $update->resource_id)->toBe((int) $inquiry->id)
         ->and($update->ip)->toBe('127.0.0.1')
         ->and($update->summary)->toBeJson();
 
@@ -169,7 +173,7 @@ it('F5: failures and permission denials record NOTHING', function () {
     $cursor = AdminAuditLog::max('id');
 
     // Owner failures: 404 target, 422 validation — no rows.
-    f5Write($this, $owner, 'PATCH', '/api/admin/inquiries/00000000-0000-0000-0000-00000000f500', ['status' => 'REVIEWING'])->assertStatus(404);
+    f5Write($this, $owner, 'PATCH', '/api/admin/inquiries/999999', ['status' => 'REVIEWING'])->assertStatus(404);
     f5Write($this, $owner, 'POST', '/api/admin/users', [
         'email' => 'bad', 'name' => '', 'role' => 'GOD', 'password' => 'short',
     ])->assertStatus(422);

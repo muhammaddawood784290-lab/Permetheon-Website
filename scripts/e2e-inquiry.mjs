@@ -64,6 +64,8 @@ const INQUIRY = {
   company: "Permetheon Test Co",
   email: "Moin@Example.com",
   contactNumber: "+1 202 555 0147", // non-canonical input → must persist E.164
+  city: "Islamabad",
+  country: "Pakistan",
   projectType: "Booking / Reservation System",
   budget: "$5,000 – $10,000",
   timeline: "1–3 months",

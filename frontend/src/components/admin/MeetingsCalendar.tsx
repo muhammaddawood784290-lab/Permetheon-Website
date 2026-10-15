@@ -84,7 +84,6 @@ export function MeetingsCalendar() {
   const [view, setView] = useState<ViewMode>("month");
   const [anchor, setAnchor] = useState(() => utcToday());
   const [meetings, setMeetings] = useState<CalendarMeeting[]>([]);
-  const [timezone, setTimezone] = useState("UTC");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -118,7 +117,6 @@ export function MeetingsCalendar() {
       }
       const body = (await res.json()) as { data?: { meetings?: CalendarMeeting[]; timezone?: string } };
       setMeetings(body?.data?.meetings ?? []);
-      if (body?.data?.timezone) setTimezone(body.data.timezone);
     } catch {
       setError("Could not load the calendar. Please try again.");
     }
@@ -278,7 +276,7 @@ export function MeetingsCalendar() {
         </Button>
         <p className="ml-2 text-sm font-semibold text-ink">
           {view === "month" ? anchor.slice(0, 7) : formatLongDate(anchor)}
-          <span className="ml-2 text-xs font-normal text-fog">times in {timezone}</span>
+
         </p>
 
         <div className="ml-auto">
@@ -486,68 +484,62 @@ function AvailabilitySettingsEditor({
   onSave: (next: MeetingSettings) => Promise<void>;
   busy: boolean;
 }) {
-  const [draft, setDraft] = useState<MeetingSettings>(settings);
-  useEffect(() => setDraft(settings), [settings]);
+  // The booking schedule is fixed: Mon-Fri, 09:00-20:00 UTC.
+  // These values are displayed for reference; they cannot be changed.
+  // The server enforces them regardless of the stored meeting_settings row.
+  // Only slot duration, booking window, lead time and enabled status are editable.
 
-  const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const [draft, setDraft] = useState<MeetingSettings>({
+    ...settings,
+    slotDurationMinutes: settings.slotDurationMinutes,
+    bookingWindowDays: settings.bookingWindowDays,
+    minLeadTimeMinutes: settings.minLeadTimeMinutes,
+    enabled: settings.enabled,
+  });
+  useEffect(() => setDraft({
+    ...settings,
+    slotDurationMinutes: settings.slotDurationMinutes,
+    bookingWindowDays: settings.bookingWindowDays,
+    minLeadTimeMinutes: settings.minLeadTimeMinutes,
+    enabled: settings.enabled,
+  }), [settings]);
 
   return (
     <div className="flex flex-col gap-4">
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-fog">Availability settings</p>
 
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Working days">
-        {DAY_LABELS.map((label, index) => {
-          const active = draft.workingDays.includes(index);
-          return (
-            <button
-              key={label}
-              type="button"
-              aria-pressed={active}
-              className={`rounded-pill border px-3.5 py-1.5 text-sm font-medium transition-colors ${
-                active ? "border-accent bg-accent/10 text-ink" : "border-line bg-paper text-fog hover:text-ink"
-              }`}
-              onClick={() =>
-                setDraft((d) => ({
-                  ...d,
-                  workingDays: active
-                    ? d.workingDays.filter((x) => x !== index)
-                    : [...d.workingDays, index].sort((a, b) => a - b),
-                }))
-              }
-            >
-              {label}
-            </button>
-          );
-        })}
+      {/* Fixed schedule display — not editable */}
+      <div className="rounded-card border border-line bg-paper-soft p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-fog mb-3">Booking schedule</p>
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+          <div>
+            <dt className="text-xs uppercase tracking-[0.14em] text-fog">Working days</dt>
+            <dd className="text-ink font-medium">Monday - Friday</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase tracking-[0.14em] text-fog">Working Hours</dt>
+            <dd className="text-ink font-medium">09:00 - 20:00</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase tracking-[0.14em] text-fog">Slot interval</dt>
+            <dd className="text-ink font-medium">{settings.slotDurationMinutes} minutes</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase tracking-[0.14em] text-fog">Meeting duration</dt>
+            <dd className="text-ink font-medium">30 minutes</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase tracking-[0.14em] text-fog">Booking window</dt>
+            <dd className="text-ink font-medium">{settings.bookingWindowDays} days</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase tracking-[0.14em] text-fog">Min lead time</dt>
+            <dd className="text-ink font-medium">{settings.minLeadTimeMinutes} minutes</dd>
+          </div>
+        </dl>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <label className="flex flex-col gap-1 text-xs uppercase tracking-[0.14em] text-fog">
-          Day starts
-          <input
-            type="time"
-            step={1800}
-            value={minutesToTime("00:00", draft.dayStartMinutes)}
-            onChange={(e) => {
-              const [h = "0", m = "0"] = e.target.value.split(":").map(Number);
-              setDraft((d) => ({ ...d, dayStartMinutes: (h as number) * 60 + (m as number) }));
-            }}
-            className={selectClasses}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-xs uppercase tracking-[0.14em] text-fog">
-          Day ends
-          <input
-            type="time"
-            step={1800}
-            value={minutesToTime("00:00", draft.dayEndMinutes)}
-            onChange={(e) => {
-              const [h = "0", m = "0"] = e.target.value.split(":").map(Number);
-              setDraft((d) => ({ ...d, dayEndMinutes: (h as number) * 60 + (m as number) }));
-            }}
-            className={selectClasses}
-          />
-        </label>
         <label className="flex flex-col gap-1 text-xs uppercase tracking-[0.14em] text-fog">
           Slot length (min)
           <input
@@ -555,7 +547,7 @@ function AvailabilitySettingsEditor({
             min={10}
             max={240}
             step={5}
-            value={draft.slotDurationMinutes}
+            value={settings.slotDurationMinutes}
             onChange={(e) => setDraft((d) => ({ ...d, slotDurationMinutes: Number(e.target.value) }))}
             className={selectClasses}
           />
@@ -566,7 +558,7 @@ function AvailabilitySettingsEditor({
             type="number"
             min={1}
             max={365}
-            value={draft.bookingWindowDays}
+            value={settings.bookingWindowDays}
             onChange={(e) => setDraft((d) => ({ ...d, bookingWindowDays: Number(e.target.value) }))}
             className={selectClasses}
           />
@@ -578,7 +570,7 @@ function AvailabilitySettingsEditor({
             min={0}
             max={10080}
             step={15}
-            value={draft.minLeadTimeMinutes}
+            value={settings.minLeadTimeMinutes}
             onChange={(e) => setDraft((d) => ({ ...d, minLeadTimeMinutes: Number(e.target.value) }))}
             className={selectClasses}
           />
@@ -586,7 +578,7 @@ function AvailabilitySettingsEditor({
         <label className="flex items-center gap-2 self-end text-sm text-ink">
           <input
             type="checkbox"
-            checked={draft.enabled}
+            checked={settings.enabled}
             onChange={(e) => setDraft((d) => ({ ...d, enabled: e.target.checked }))}
           />
           Booking enabled
@@ -598,7 +590,8 @@ function AvailabilitySettingsEditor({
           Save availability
         </Button>
         <p className="mt-2 text-xs text-fog">
-          All times are <span className="font-mono">{draft.timezone}</span> — the server is authoritative; no local conversion is applied.
+          The booking schedule (Mon-Fri, 09:00-20:00) is fixed and cannot be changed.
+          Slot length, booking window, lead time and enabled status can be updated.
         </p>
       </div>
     </div>

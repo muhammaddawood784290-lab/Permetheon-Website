@@ -69,7 +69,6 @@ final class AdminCreate extends Command
 
         $now = Clock::now();
         AdminUser::create([
-            'id'                 => (string) Str::uuid(),
             'email'              => $email,
             'name'               => (string) $this->option('name') !== '' ? (string) $this->option('name') : strtok($email, '@'),
             'password_hash'      => Hash::make($password),

@@ -61,8 +61,10 @@ function usersAuthCsrf($test, array $tokens)
 
 function usersSeed(string $email, string $role, string $password = 'a-string-password'): AdminUser
 {
+    static $counter = 0;
+    $counter++;
     return AdminUser::create([
-        'id'                 => (string) Str::uuid(),
+        'id'                 => $counter,
         'email'              => strtolower($email),
         'name'               => strtoupper(strtok($email, '@')),
         'password_hash'      => Hash::make($password),

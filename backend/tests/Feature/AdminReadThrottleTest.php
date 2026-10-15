@@ -22,8 +22,10 @@ const F6_PASSWORD = 'super-secret-passphrase';
 
 function f6CreateAdmin(string $email): void
 {
+    static $counter = 0;
+    $counter++;
     App\Models\AdminUser::create([
-        'id'                 => Illuminate\Support\Str::uuid()->toString(),
+        'id'                 => $counter,
         'email'              => strtolower($email),
         'name'               => 'Admin ' . $email,
         'password_hash'      => Illuminate\Support\Facades\Hash::make(F6_PASSWORD),
@@ -98,7 +100,7 @@ it('F6: admin WRITE routes are not governed by the admin-read limiter', function
             'admin_session' => $a['session'],
             'admin_csrf'    => $a['csrf'],
         ])->withHeaders(['x-csrf-token' => $a['csrf']])
-            ->patchJson('/api/admin/inquiries/does-not-exist', ['status' => 'REVIEWING'])
+            ->patchJson('/api/admin/inquiries/999999', ['status' => 'REVIEWING'])
             ->assertStatus(404);
     }
 

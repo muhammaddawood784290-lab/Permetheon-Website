@@ -6,8 +6,7 @@
  * TIME STANDARD: UTC only. All slot values are ISO 8601 UTC instants
  * ('2026-09-30T10:00:00Z'). Formatting is purely textual string surgery on
  * the UTC values the backend returned — no Date parsing, no Intl, no
- * browser-local timezone is ever consulted, and nothing is converted. The UI
- * always labels times "UTC".
+ * browser-local timezone is ever consulted, and nothing is converted.
  */
 
 import { apiUrl } from "@/lib/api";
@@ -30,7 +29,7 @@ export type AvailabilityDay = {
 };
 
 export type AvailabilityPayload = {
-  timezone: string; // always "UTC"
+  timezone: string; // "UTC"
   slotDurationMinutes: number;
   enabled: boolean;
   days: AvailabilityDay[];
@@ -44,7 +43,7 @@ export type MeetingSettings = {
   bookingWindowDays: number;
   minLeadTimeMinutes: number;
   enabled: boolean;
-  timezone: string; // always "UTC"
+  timezone: string; // "UTC"
 };
 
 export type MeetingBlock = {
@@ -94,9 +93,9 @@ export function splitSlot(slot: string): { date: string; time: string } {
   return { date, time: rest.slice(0, 5) };
 }
 
-/** "10:00" → "10:00 UTC" — neutral UTC label, no conversion. */
+/** "10:00" → "10:00" — time only, no timezone label. */
 export function formatTime12h(hhmm: string): string {
-  return `${hhmm} UTC`;
+  return hhmm;
 }
 
 const DOW_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];

@@ -27,12 +27,13 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         DB::table('meeting_settings')->updateOrInsert(
-            ['id' => 'singleton'],
+            ['id' => 1],
             [
                 'working_days' => '1,2,3,4,5',
-                'day_start_minutes' => 9 * 60,   // 09:00 UTC
-                'day_end_minutes' => 17 * 60,    // 17:00 UTC (last slot must END by this)
-                'slot_duration_minutes' => 30,
+                'day_start_minutes' => 9 * 60,
+                'day_end_minutes' => 17 * 60,
+                'slot_interval_minutes' => 30,
+                'meeting_duration_minutes' => 30,
                 'booking_window_days' => 30,
                 'min_lead_time_minutes' => 120,
                 'enabled' => true,

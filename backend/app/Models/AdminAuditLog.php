@@ -4,11 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-/**
- * ADMIN AUDIT LOG (F5) — append-only. The model actively refuses updates and
- * deletes so application code cannot silently rewrite history; pruning is a
- * future, explicitly-operational concern (like session pruning), not a code
- * path.
+/** ADMIN AUDIT LOG (F5) — append-only. The model actively refuses updates
+ * and deletes so application code cannot silently rewrite history; pruning
+ * is a future, explicitly-operational concern (like session pruning), not a
+ * code path. Integer auto-increment id.
  */
 class AdminAuditLog extends Model
 {
@@ -16,7 +15,10 @@ class AdminAuditLog extends Model
 
     protected $table = 'admin_audit_log';
 
-    /** Insertable via create(); history is protected by the booted hooks. */
+    public $incrementing = true;
+
+    protected $keyType = 'integer';
+
     protected $fillable = [
         'admin_id', 'admin_email', 'action', 'resource_type', 'resource_id', 'summary', 'ip', 'created_at',
     ];
@@ -30,9 +32,8 @@ class AdminAuditLog extends Model
         return parent::save($options);
     }
 
-    protected static function booted(): void
+    public function delete(): bool
     {
-        static::updating(fn () => throw new \LogicException('admin_audit_log is append-only.'));
-        static::deleting(fn () => throw new \LogicException('admin_audit_log is append-only.'));
+        throw new \LogicException('admin_audit_log is append-only.');
     }
 }

@@ -23,6 +23,9 @@ use App\Support\PasswordPolicy;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 
+
+
+
 // ---------------------------------------------------------------- F7 ---
 
 it('F7: PasswordPolicy requires 12 characters and carries the contract message', function () {
@@ -97,11 +100,15 @@ it('F4: admin:unlock clears an active lock so the account can log in again', fun
     $admin->locked_until = Clock::offset(15 * 60);
     $admin->save();
 
-    Log::shouldReceive('warning')->atLeast()->once();
+    Log::spy();
 
     $this->artisan('admin:unlock', ['email' => 'owner@permetheon.test'])
         ->expectsOutputToContain('Lock cleared')
         ->assertSuccessful();
+
+    Log::assertHaveReceived('warning', 'admin.lockout.cleared', Mockery::on(function ($ctx) {
+        return $ctx['email'] === 'owner@permetheon.test';
+    }));
 
     $admin->refresh();
     expect($admin->locked_until)->toBeNull()
@@ -115,8 +122,8 @@ it('F4: admin:unlock clears an active lock so the account can log in again', fun
 it('F4: the lock engages after 5 failures and is visible in the log; unknown email fails cleanly', function () {
     $admin = ownerFixtureForHardening();
 
-    // Spy (not a mock): the unlock command ALSO logs 'admin.lockout.cleared'
-    // and a strict mock would reject it. The spy records and asserts.
+    // Spy: record every Log::warning call so both the lockout-engaged and
+    // lockout-cleared lines can be asserted without a strict mock rejecting them.
     Log::spy();
 
     for ($i = 0; $i < 5; $i++) {
@@ -184,7 +191,6 @@ function ownerFixtureForHardening(): AdminUser
     }
 
     return AdminUser::create([
-        'id'                 => (string) Illuminate\Support\Str::uuid(),
         'email'              => 'owner@permetheon.test',
         'name'               => 'Owner',
         'password_hash'      => Hash::make('hardening-passphrase'),

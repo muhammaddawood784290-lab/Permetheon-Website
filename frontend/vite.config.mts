@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath } from "node:url";
+import "vite-react-ssg";
 
 /**
  * VITE CONFIG �.
@@ -18,7 +19,7 @@ import { fileURLToPath } from "node:url";
  * no CORS surface and no per-request credentials hacks (map §2B-11 resolved
  * this way instead of dev-only CORS).
  */
-const laravelTarget = process.env.LARAVEL_API_URL ?? "http://localhost:8000";
+const laravelTarget = process.env.LARAVEL_API_URL ?? "http://127.0.0.1:8000";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -42,7 +43,7 @@ export default defineConfig({
     // "\n      " text nodes don't exist in the client render. Formatting must
     // stay OFF (verified via the dev-mode hydration diff).
     formatting: "none",
-    onBeforePageRender(path, html) {
+    onBeforePageRender(_path, html) {
       // Strip the index.html fallback <title>/description for PRERENDERED
       // routes: Helmet bakes the real per-route tags, and leaving the fallback
       // would produce two <title>s and two descriptions per page (SEO bug).

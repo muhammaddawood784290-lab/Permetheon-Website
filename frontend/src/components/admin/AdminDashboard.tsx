@@ -41,6 +41,8 @@ type Inquiry = {
   company: string | null;
   email: string;
   contactNumber: string;
+  city: string | null;
+  country: string | null;
   projectType: string;
   budget: string | null;
   timeline: string | null;
@@ -446,6 +448,9 @@ export function AdminDashboard({ admin }: { admin?: AdminInfo }) {
                         {inquiry.email} · {hasContactNumber(inquiry.contactNumber) ? inquiry.contactNumber : "no contact number"} · {inquiry.projectType}
                         {inquiry.budget ? ` · ${inquiry.budget}` : ""}
                         {inquiry.timeline ? ` · ${inquiry.timeline}` : ""}
+                        {inquiry.city || inquiry.country
+                          ? ` · ${[inquiry.city, inquiry.country].filter(Boolean).join(", ")}`
+                          : ""}
                       </p>
                       <p className="mt-1 text-xs text-fog">{formatDate(inquiry.createdAt)}</p>
                     </button>
@@ -518,6 +523,14 @@ export function AdminDashboard({ admin }: { admin?: AdminInfo }) {
               </div>
 
               <dl className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <dt className="text-xs uppercase tracking-[0.14em] text-fog">City</dt>
+                  <dd className="mt-0.5 text-ink">{selected.city ?? "Not provided"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-[0.14em] text-fog">Country</dt>
+                  <dd className="mt-0.5 text-ink">{selected.country ?? "Not provided"}</dd>
+                </div>
                 <div>
                   <dt className="text-xs uppercase tracking-[0.14em] text-fog">Project type</dt>
                   <dd className="mt-0.5 text-ink">{selected.projectType}</dd>

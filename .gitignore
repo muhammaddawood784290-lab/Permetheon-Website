@@ -1,36 +1,107 @@
-# OS / editor
+# OS and editors
 Thumbs.db
 .DS_Store
-*.log
 .idea/
 .vscode/
 
-# Node / Vite (frontend)
-frontend/node_modules/
-frontend/dist/
-frontend/.env.local
-frontend/.env.*.local
-
-# Composer / Laravel (backend)
-backend/vendor/
-backend/node_modules/
-backend/.env
-backend/storage/*.key
-backend/storage/framework/cache/data/*
-backend/storage/framework/sessions/*
-backend/storage/framework/views/*
-backend/storage/logs/*
+# Logs and temporary output
+*.log
+*.tmp
+*.temp
+*.pid
+backend/test-run-full.txt
 backend/storage/dev-serve.out
 backend/storage/dev-serve.err
-
-# E2E leftovers
 backend/storage/e2e-server.pid
+backend/storage/mw-debug.txt
+backend/storage/verify-*.err
+backend/storage/verify-*.out
+backend/verify-*.php
+backend/scripts/verify-atlas.php
+backend/%TEMP%*
+backend/C:Temppest_output.txt
+/frontend/build.out
 
-# Local admin credentials (never commit)
+# Node / React / Vite
+/node_modules/
+/frontend/node_modules/
+/frontend/dist/
+
+# Environment files and local secrets
+.env
+.env.*
+!.env.example
+/frontend/.env.development
+/frontend/.env.production
+/frontend/.env.local
+/frontend/.env.*.local
+/backend/.env
+/backend/.env.*
+!/backend/.env.example
+
+# Keys and certificates
+*.pem
+*.p12
+*.pfx
+*.keystore
+*.secret
+*.key
+secrets/
+credentials/
+
+# Laravel / Composer
+/backend/vendor/
+/backend/node_modules/
+/backend/storage/*.key
+/backend/storage/framework/cache/data/*
+/backend/storage/framework/sessions/*
+/backend/storage/framework/views/*
+/backend/storage/logs/*
+/backend/permetheon_test
+/backend/repo_backup/
+/backend/repo_clone/
+
+# Private admin files and notes
 /Admin.md
+/Admin*.md
+/ADMIN*.md
+/docs/Admin.md
+/GitHub Key for WSL + Ubuntu.txt
+/Permetheon Website V3 PHP supabase.txt
+/docs/private/
+/docs/internal/
+/docs/confidential/
 
-# Local/deployment artifacts
-.freebuff/
+# Local databases and backups
+*.dump
+*.sql.gz
+*.sqlite
+*.sqlite3
+*.bak
+*.backup
+*.env.bak
+*.env.backup
 backups/
 release/
 *.zip
+.freebuff/
+
+# Local Supabase state and executable
+/supabase/.temp/
+/supabase/.branches/
+/supabase-go
+
+# Local patch and component backup
+/meeting-schedule.patch
+/frontend/src/components/InquiryForm.tsx.before-native-booking
+
+# Local safety backup
+/.gitignore.backup-before-cleanup
+/.gitignore.backup-before-security-update
+
+# Local verification scripts and command output
+/backend/verify_hotfix_trunk.php
+/backend/verify_step4_probe.php
+/backend/verify_token_hash_hotfix.php
+/ql -h 127.0.0.1 -p 54322 -U postgres -d permetheon_sql_verify -X -v ON_ERROR_STOP=1 -c SELECT schemaname, tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;
+/backend/database/seeders/*.local-backup

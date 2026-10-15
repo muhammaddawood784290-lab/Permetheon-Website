@@ -88,8 +88,9 @@ applicable.
 - No SQLi: all queries go through Eloquent/query-builder parameter binding.
 - No stored XSS execution: dangerous markup is rejected at validation
   (`DANGEROUS_PATTERN`) across name/company/message.
-- No mass assignment: only the canonical 8-field inquiry payload survives
-  validation; privileged fields (`status`, `priority`, `role`, `id`,
+- No mass assignment: only the canonical inquiry payload (8 fields as of
+  2026-09-22; + city/country since 2026-10-14) survives validation;
+  privileged fields (`status`, `priority`, `role`, `id`,
   `createdAt`) are server-controlled (asserted by tests).
 - CSRF double-submit: 24 negative cases → 403; `hash_equals` comparison;
   token also returned in the login/refresh response body.

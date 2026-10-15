@@ -30,6 +30,8 @@ it('stores the exact UTC instant regardless of the PHP process timezone (server-
     $storageBefore = MeetingTime::normalize($slot);
     $expectedWall = Carbon::parse($slot, 'UTC')->format('Y-m-d H:i');
 
+    static $counter = 0;
+    $counter++;
     $availability = MeetingAvailability::make();
 
     // Simulate a server moved to a UTC+5 machine: the booking must still
@@ -40,7 +42,7 @@ it('stores the exact UTC instant regardless of the PHP process timezone (server-
         config(['app.timezone' => 'Asia/Karachi']);
         $availability->bookForInquiry(
             BusinessInquiry::create([
-                'id'             => (string) Illuminate\Support\Str::uuid(),
+                'id'             => $counter,
                 'name'           => 'TZ Shift A',
                 'company'        => '',
                 'email'          => 'tz-a@example.com',

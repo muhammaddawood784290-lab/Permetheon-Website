@@ -17,8 +17,10 @@ function bootstrapAdmin(): void
     }
 
     // Mint the super admin directly (as the bootstrap would).
+    static $counter = 0;
+    $counter++;
     App\Models\AdminUser::create([
-        'id'                 => Illuminate\Support\Str::uuid()->toString(),
+        'id'                 => $counter,
         'email'              => strtolower(ADMIN_EMAIL),
         'name'               => 'Owner',
         'password_hash'      => Illuminate\Support\Facades\Hash::make(ADMIN_PASSWORD),
@@ -164,6 +166,47 @@ it('searches by name/email/company/phone/message (row 27)', function () {
         $response->assertStatus(200);
         expect(count($response->json('data.inquiries')))->toBeGreaterThan(0);
     }
+});
+
+it('persists and returns city/country through list and show (2026-10-14 amendment)', function () {
+    bootstrapAdmin();
+
+    $this->withHeader('X-Forwarded-For', '10.9.7.1')
+        ->postJson('/api/inquiries', array_merge(VALID_INQUIRY, [
+            'name'    => 'Location Probe',
+            'email'   => 'location-probe@storm.test',
+            'city'    => '  Islamabad  ', // trimmed like every other text field
+            'country' => 'Pakistan',
+        ]))->assertStatus(201);
+
+    $cookies = loginAsAdmin($this);
+    $headers = ['admin_session' => $cookies['session'], 'admin_csrf' => $cookies['csrf']];
+
+    // LIST carries the values.
+    $list = $this->withCredentials()->withUnencryptedCookies($headers)->getJson('/api/admin/inquiries');
+    $list->assertStatus(200);
+    $row = collect($list->json('data.inquiries'))->firstWhere('email', 'location-probe@storm.test');
+    expect($row)->not->toBeNull()
+        ->and($row['city'])->toBe('Islamabad')
+        ->and($row['country'])->toBe('Pakistan');
+
+    // SHOW carries the same values (identical contract for every role — roles
+    // share this single endpoint, so one fetch proves all four accounts).
+    $show = $this->withCredentials()->withUnencryptedCookies($headers)
+        ->getJson('/api/admin/inquiries/' . $row['id']);
+    $show->assertStatus(200)
+        ->assertJsonPath('data.inquiry.city', 'Islamabad')
+        ->assertJsonPath('data.inquiry.country', 'Pakistan');
+
+    // Hostile update attempts cannot overwrite the original location fields.
+    $this->withCredentials()->withUnencryptedCookies($headers)
+        ->withHeader('x-csrf-token', $cookies['csrf'])
+        ->patchJson('/api/admin/inquiries/' . $row['id'], ['city' => 'HACKED', 'country' => 'HACKED'])
+        ->assertStatus(200);
+    $check = $this->withCredentials()->withUnencryptedCookies($headers)
+        ->getJson('/api/admin/inquiries/' . $row['id']);
+    expect($check->json('data.inquiry.city'))->toBe('Islamabad')
+        ->and($check->json('data.inquiry.country'))->toBe('Pakistan');
 });
 
 it('updates status/priority but never touches the original message (row 29)', function () {

@@ -4,10 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-/**
- * ADMIN SESSION — the custom guard's session store. Tokens are stored SHA-256
- * hashed; the sliding 30-min idle window + 24-h absolute lifetime live here
- *.
+/** ADMIN SESSION — the custom guard's session store. token_hash is the
+ * SHA-256 hex digest of the session token; the sliding 30-min idle window +
+ * 24-h absolute lifetime live here.
  */
 class AdminSession extends Model
 {
@@ -16,12 +15,12 @@ class AdminSession extends Model
 
     protected $table = 'admin_sessions';
 
-    public $incrementing = false;
+    public $incrementing = true;
 
-    protected $keyType = 'string';
+    protected $keyType = 'integer';
 
     protected $fillable = [
-        'id', 'admin_id', 'created_at', 'last_seen_at', 'absolute_expires_at', 'revoked_at',
+        'token_hash', 'admin_id', 'created_at', 'last_seen_at', 'absolute_expires_at', 'revoked_at',
     ];
 
     public function isRevoked(): bool

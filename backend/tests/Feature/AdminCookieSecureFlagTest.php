@@ -27,8 +27,10 @@ function f2CreateAdmin(): void
     if (App\Models\AdminUser::where('email', F2_EMAIL)->exists()) {
         return;
     }
+    static $counter = 0;
+    $counter++;
     App\Models\AdminUser::create([
-        'id'                 => Illuminate\Support\Str::uuid()->toString(),
+        'id'                 => $counter,
         'email'              => strtolower(F2_EMAIL),
         'name'               => 'Owner',
         'password_hash'      => Illuminate\Support\Facades\Hash::make(F2_PASSWORD),

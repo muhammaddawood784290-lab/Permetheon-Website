@@ -7,47 +7,6 @@ use App\Models\Meeting;
 // HTTP-LEVEL MEETING SUITE — real request/response over the API (spec §10/§13)
 // ============================================================================
 
-const M_ADMIN_EMAIL = 'owner@permetheon.test';
-const M_ADMIN_PASSWORD = 'super-secret-passphrase';
-
-function mBootstrapAdmin(): void
-{
-    if (App\Models\AdminUser::count() > 0) {
-        return;
-    }
-
-    App\Models\AdminUser::create([
-        'id'                 => 'admin-bootstrap-meetings',
-        'email'              => M_ADMIN_EMAIL,
-        'name'               => 'Administrator',
-        'password_hash'      => password_hash(M_ADMIN_PASSWORD, PASSWORD_BCRYPT),
-        'role'               => 'SUPER_ADMIN',
-        'is_active'          => 1,
-        'failed_login_count' => 0,
-        'created_at'         => gmdate('Y-m-d H:i:s.v'),
-        'updated_at'         => gmdate('Y-m-d H:i:s.v'),
-    ]);
-}
-
-function mLoginAsAdmin($test): array
-{
-    mBootstrapAdmin();
-
-    $response = $test->postJson('/api/admin/auth/login', [
-        'email'    => M_ADMIN_EMAIL,
-        'password' => M_ADMIN_PASSWORD,
-    ]);
-    $response->assertStatus(200);
-
-    $cookies = $response->headers->getCookies();
-    $sessionCookie = collect($cookies)->first(fn ($c) => $c->getName() === 'admin_session');
-    $csrfCookie = collect($cookies)->first(fn ($c) => $c->getName() === 'admin_csrf');
-
-    return [
-        'session' => $sessionCookie?->getValue(),
-        'csrf'    => $csrfCookie?->getValue(),
-    ];
-}
 
 it('GET /api/meetings/availability serves the public calendar with no admin data', function () {
     $res = $this->getJson('/api/meetings/availability');

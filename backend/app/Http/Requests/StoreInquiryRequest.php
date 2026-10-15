@@ -71,7 +71,7 @@ class StoreInquiryRequest extends FormRequest
         // Trim strings up front; empty strings for optional fields normalize to
         // null in validated() output.
         $out = [];
-        foreach (['name', 'company', 'email', 'contactNumber', 'projectType', 'budget', 'timeline', 'message'] as $field) {
+        foreach (['name', 'company', 'email', 'contactNumber', 'city', 'country', 'projectType', 'budget', 'timeline', 'message'] as $field) {
             $value = $this->input($field);
             $out[$field] = is_string($value) ? trim($value) : '';
         }
@@ -117,6 +117,30 @@ class StoreInquiryRequest extends FormRequest
                 'required',
                 new E164PhoneNumber(),
             ],
+            // CITY/COUNTRY (2026-10-14 amendment) — required location fields,
+            // plain text only. Legacy rows predate the columns and carry NULL.
+            'city' => [
+                'bail',
+                'required',
+                'min:2',
+                'max:100',
+                function ($attribute, $value, $fail) {
+                    if ($value !== '' && preg_match(self::DANGEROUS_PATTERN, $value)) {
+                        $fail('City may not contain markup or code.');
+                    }
+                },
+            ],
+            'country' => [
+                'bail',
+                'required',
+                'min:2',
+                'max:100',
+                function ($attribute, $value, $fail) {
+                    if ($value !== '' && preg_match(self::DANGEROUS_PATTERN, $value)) {
+                        $fail('Country may not contain markup or code.');
+                    }
+                },
+            ],
             'projectType' => [
                 'bail',
                 'required',
@@ -144,7 +168,7 @@ class StoreInquiryRequest extends FormRequest
                 },
             ],
             // OPTIONAL meeting booking (spec §1) — absent/""/false = no meeting.
-            // The 8-field inquiry contract is untouched; these fields only gate
+            // The core inquiry contract is untouched; these fields only gate
             // whether a meeting is created alongside the inquiry. startsAt MUST
             // be an ISO 8601 UTC instant ('2026-09-30T10:00:00Z') — never an
             // ambiguous wall time without a timezone.
@@ -187,12 +211,18 @@ class StoreInquiryRequest extends FormRequest
             'message.min' => 'Please provide at least 20 characters.',
             'message.max' => 'Message must be at most 5,000 characters.',
             'contactNumber.required' => 'Please enter your contact number.',
+            'city.required' => 'Please enter your city.',
+            'city.min' => 'City must be at least 2 characters.',
+            'city.max' => 'City must be at most 100 characters.',
+            'country.required' => 'Please enter your country.',
+            'country.min' => 'Country must be at least 2 characters.',
+            'country.max' => 'Country must be at most 100 characters.',
             'meeting.startsAt.required_if' => 'Please choose a meeting time, or continue without booking.',
         ];
     }
 
     /**
-     * Canonical 8 fields only — mass-assignment protection.
+     * Canonical fields only — mass-assignment protection.
      * Optional fields normalize "" → null; non-record payloads never reach here
      * (the controller guards them before validation).
      */
@@ -205,6 +235,8 @@ class StoreInquiryRequest extends FormRequest
             'company'       => ($v['company'] ?? '') === '' ? null : $v['company'],
             'email'         => $v['email'],
             'contact_number' => E164PhoneNumber::normalize($v['contactNumber']),
+            'city'          => $v['city'],
+            'country'       => $v['country'],
             'project_type'  => $v['projectType'],
             'budget'        => ($v['budget'] ?? '') === '' ? null : $v['budget'],
             'timeline'      => ($v['timeline'] ?? '') === '' ? null : $v['timeline'],

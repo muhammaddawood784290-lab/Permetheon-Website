@@ -20,7 +20,7 @@ class NoteController extends Controller
 
     public function index(Request $request, string $id): JsonResponse
     {
-        if (! BusinessInquiry::find($id)) {
+        if (! preg_match('/^\d+$/', $id) || ! BusinessInquiry::find($id)) {
             return ApiResponse::notFound('Inquiry not found.');
         }
 
@@ -34,7 +34,7 @@ class NoteController extends Controller
 
     public function store(Request $request, string $id): JsonResponse
     {
-        if (! BusinessInquiry::find($id)) {
+        if (! preg_match('/^\d+$/', $id) || ! BusinessInquiry::find($id)) {
             return ApiResponse::notFound('Inquiry not found.');
         }
 
@@ -55,7 +55,6 @@ class NoteController extends Controller
         $now = \App\Support\Clock::now();
 
         $note = InquiryNote::create([
-            'id'         => (string) Str::uuid(),
             'inquiry_id' => $id,
             'admin_id'   => $admin->id,
             'body'       => $text,

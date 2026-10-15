@@ -22,8 +22,10 @@ function gapBootstrapAdmin(): void
         return;
     }
 
+    static $counter = 0;
+    $counter++;
     AdminUser::create([
-        'id'                 => (string) Str::uuid(),
+        'id'                 => $counter,
         'email'              => strtolower(GAP_ADMIN_EMAIL),
         'name'               => 'Owner',
         'password_hash'      => Hash::make(GAP_ADMIN_PASSWORD),
@@ -74,7 +76,7 @@ it('G2a: idle-expired sessions (30min) are revoked server-side and cannot be rep
 
     // Age the session past the idle window (simulate by backdating last_seen_at).
     $sessionId = hash('sha256', $rawToken);
-    AdminSession::where('id', $sessionId)->update([
+    AdminSession::where('token_hash', $sessionId)->update([
         'last_seen_at' => gmdate('Y-m-d H:i:s.v', time() - 31 * 60),
     ]);
 
@@ -85,7 +87,7 @@ it('G2a: idle-expired sessions (30min) are revoked server-side and cannot be rep
     $replayed->assertStatus(401);
 
     // The expired row must now be revoked (cannot be replayed even if re-aged).
-    $session = AdminSession::find($sessionId);
+    $session = AdminSession::where('token_hash', $sessionId)->first();
     expect($session->revoked_at)->not->toBeNull();
 });
 
@@ -94,7 +96,7 @@ it('G2b: absolute expiry (24h) kills even a fresh idle window', function () {
     $rawToken = $cookies['session'];
     $sessionId = hash('sha256', $rawToken);
 
-    AdminSession::where('id', $sessionId)->update([
+    AdminSession::where('token_hash', $sessionId)->update([
         'absolute_expires_at' => gmdate('Y-m-d H:i:s.v', time() - 1),
     ]);
 
@@ -110,7 +112,7 @@ it('G2c: the idle window slides on activity', function () {
     $sessionId = hash('sha256', $rawToken);
 
     // Age to 29 minutes — still inside the 30-min window.
-    AdminSession::where('id', $sessionId)->update([
+    AdminSession::where('token_hash', $sessionId)->update([
         'last_seen_at' => gmdate('Y-m-d H:i:s.v', time() - 29 * 60),
     ]);
 
@@ -118,7 +120,7 @@ it('G2c: the idle window slides on activity', function () {
         ->getJson('/api/admin/auth/session')->assertStatus(200);
 
     // The touch must have slid the window back to "now".
-    $session = AdminSession::find($sessionId);
+    $session = AdminSession::where('token_hash', $sessionId)->first();
     $age = time() - strtotime($session->last_seen_at);
     expect($age)->toBeLessThan(60);
 });

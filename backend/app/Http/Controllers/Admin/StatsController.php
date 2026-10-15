@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
 use App\Models\BusinessInquiry;
 use App\Services\ApiResponse;
 
@@ -19,15 +18,18 @@ class StatsController extends Controller
 
     public function index(): JsonResponse
     {
+        // PostgreSQL-compatible aggregation; preserve the complete status vocabulary.
         $byStatus = array_fill_keys(self::STATUSES, 0);
-        foreach (
-            DB::table('business_inquiries')
-                ->selectRaw('status, COUNT(*) as n')
-                ->groupBy('status')
-                ->get() as $row
-        ) {
-            if (array_key_exists($row->status, $byStatus)) {
-                $byStatus[$row->status] = (int) $row->n;
+        $rows = BusinessInquiry::query()
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->groupBy('status')
+            ->get();
+
+        foreach ($rows as $row) {
+            $status = (string) ($row->status ?? '');
+            $count = $row->aggregate ?? null;
+            if (array_key_exists($status, $byStatus) && $count !== null) {
+                $byStatus[$status] = (int) $count;
             }
         }
 
