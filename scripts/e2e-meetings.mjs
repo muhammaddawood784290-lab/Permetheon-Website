@@ -75,6 +75,8 @@ function inquiryPayload(overrides = {}) {
     company: "",
     email: `meeting-e2e-${Math.random().toString(36).slice(2)}@example.com`,
     contactNumber: "+12025550147",
+    city: "Islamabad",
+    country: "Pakistan",
     projectType: "Booking / Reservation System",
     budget: "",
     timeline: "",

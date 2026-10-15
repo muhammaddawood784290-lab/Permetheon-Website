@@ -21,13 +21,15 @@ use Illuminate\Support\Str;
  * timezone, no browser/server-local conversion exists anywhere in this
  * system — see App\Support\MeetingTime.
  *
- * Slot model: fixed grid [day_start, day_end) in UTC, split into
- * slot_duration_minutes steps. A slot is available iff:
+ * Slot model: fixed grid [09:00 to 20:00) UTC on Mon–Fri, split into
+ * 60-minute steps. A slot is available iff:
  *   - meeting_settings.enabled
- *   - the date is a configured working day, within the booking window
+ *   - the date is Mon–Fri (weekends are always NON_WORKING)
  *   - the slot is in the future by at least min_lead_time_minutes
  *   - the date is not admin-blocked, the slot is not admin-blocked
  *   - no meeting row holds the slot (BOOKED/COMPLETED — DB guard backs this)
+ * Working days (Mon–Fri) and hours (09:00–20:00) are enforced here and
+ * cannot be changed via the admin settings UI.
  */
 class MeetingAvailability
 {
@@ -86,12 +88,11 @@ class MeetingAvailability
             $cursor = $day->copy()->startOfDay()->addMinutes($settings->day_start_minutes);
             $end = $day->copy()->startOfDay()->addMinutes($settings->day_end_minutes);
 
-            // FIXED: Use a strict 60-minute slot interval for the grid.
-            $slotInterval = 60;
+            $slotInterval = $settings->slot_interval_minutes;
 
             while ($cursor->copy()->addMinutes($slotInterval)->lte($end)) {
                 $key = $cursor->format('Y-m-d H:i');
-                $endsAt = $cursor->copy()->addMinutes(30); // MEETING DURATION = 30
+                $endsAt = $cursor->copy()->addMinutes($settings->meeting_duration_minutes);
                 $past = $endsAt->lte($now);
                 $tooSoon = $cursor->lt($now->copy()->addMinutes($settings->min_lead_time_minutes));
                 $taken = isset($bookedMap[$key]);
@@ -100,7 +101,11 @@ class MeetingAvailability
                 $slots[] = [
                     'startsAt' => MeetingTime::toWire($cursor),
                     'endsAt' => MeetingTime::toWire($endsAt),
-                    'status' => ($past || $tooSoon) ? 'PAST' : ($taken ? 'BOOKED' : ($blocked ? 'BLOCKED' : 'AVAILABLE')),
+                    'status' => ! $settings->enabled
+                        ? 'BLOCKED'
+                        : (($past || $tooSoon)
+                            ? 'PAST'
+                            : ($taken ? 'BOOKED' : ($blocked ? 'BLOCKED' : 'AVAILABLE'))),
                 ];
                 $cursor->addMinutes($slotInterval);
             }
@@ -139,9 +144,11 @@ class MeetingAvailability
         $slot = Carbon::parse($normalized, $tz);
 
         // FIXED: Must land exactly on a 60-minute boundary (0 minutes).
+        // Working hours: 09:00–20:00 UTC, Mon–Fri only — enforced, not configurable.
+        $slotMinutes = (int) $slot->format('G') * 60 + (int) $slot->format('i');
         if ((int) $slot->format('i') !== 0
-            || (int) $slot->format('G') * 60 + (int) $slot->format('i') < (int) $settings->day_start_minutes
-            || (int) $slot->format('G') * 60 + (int) $slot->format('i') + 30 > (int) $settings->day_end_minutes) {
+            || $slotMinutes < $settings->day_start_minutes
+            || $slotMinutes + $settings->meeting_duration_minutes > $settings->day_end_minutes) {
             throw new MeetingConflictException('The selected time is outside working hours.');
         }
         if (! in_array($slot->dayOfWeek, $settings->workingDays(), true)) {
@@ -189,13 +196,14 @@ class MeetingAvailability
 
         $this->assertBookable($storage);
 
+        $settings = MeetingSetting::current();
         $now = Clock::now();
 
-        // FIXED: Meeting duration is strictly 30 minutes.
+        // FIXED: Meeting duration is strictly from settings.
         $meeting = Meeting::create([
             'inquiry_id' => $inquiryId,
             'starts_at' => $storage,
-            'duration_minutes' => 30,
+            'duration_minutes' => $settings->meeting_duration_minutes,
             'status' => 'BOOKED',
             'created_at' => $now,
             'updated_at' => $now,

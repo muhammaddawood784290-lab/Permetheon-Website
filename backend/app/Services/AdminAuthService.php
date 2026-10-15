@@ -186,7 +186,6 @@ class AdminAuthService
         $tokenHash = hash('sha256', $token);
 
         AdminSession::create([
-            'id'            => $tokenHash,
             'token_hash'    => $tokenHash,
             'admin_id'      => $adminId,
             'created_at'    => Clock::now(),
@@ -205,7 +204,7 @@ class AdminAuthService
      */
     public function resolveSession(string $token): ?array
     {
-        $session = AdminSession::find(hash('sha256', $token));
+        $session = AdminSession::where('token_hash', hash('sha256', $token))->first();
 
         if (! $session || $session->isRevoked() || $session->isAbsolutelyExpired()) {
             return null;
@@ -232,7 +231,7 @@ class AdminAuthService
     /** Revoke by token (logout) — server-side row invalidation. */
     public function revokeSession(string $token): void
     {
-        AdminSession::where('id', hash('sha256', $token))
+        AdminSession::where('token_hash', hash('sha256', $token))
             ->whereNull('revoked_at')
             ->update(['revoked_at' => Clock::now()]);
     }

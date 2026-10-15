@@ -72,7 +72,7 @@ function f3Patch($test, array $auth, ?string $csrfOverride = null, ?string $head
         'admin_session' => $auth['session'],
         'admin_csrf'    => $cookieValue,
     ])->withHeaders(['x-csrf-token' => $headerOverride ?? $cookieValue])
-        ->patchJson('/api/admin/inquiries/00000000-0000-0000-0000-00000000f3aa', ['status' => 'REVIEWING']);
+        ->patchJson('/api/admin/inquiries/999999', ['status' => 'REVIEWING']);
 }
 
 it('F3: the login-minted, session-bound pair still passes CSRF (controller reached)', function () {

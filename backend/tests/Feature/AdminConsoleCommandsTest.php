@@ -43,7 +43,7 @@ it('admin:reset-password sets a working bcrypt password and revokes live session
     expect(Hash::check('fresh-pass-123', $admin->password_hash))->toBeTrue()
         ->and((int) $admin->failed_login_count)->toBe(0)
         ->and($admin->locked_until)->toBeNull()
-        ->and(AdminSession::where('id', hash('sha256', $token))->whereNull('revoked_at')->exists())->toBeFalse();
+        ->and(AdminSession::where('token_hash', hash('sha256', $token))->whereNull('revoked_at')->exists())->toBeFalse();
 
     // And the new password actually logs in over HTTP.
     $this->postJson('/api/admin/auth/login', [

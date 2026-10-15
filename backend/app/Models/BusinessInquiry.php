@@ -20,8 +20,8 @@ class BusinessInquiry extends Model
     protected $keyType = 'integer';
 
     protected $fillable = [
-        'id', 'name', 'company', 'email', 'contact_number', 'project_type',
-        'budget', 'timeline', 'message', 'status', 'priority',
+        'id', 'name', 'company', 'email', 'contact_number', 'city', 'country',
+        'project_type', 'budget', 'timeline', 'message', 'status', 'priority',
         'created_at', 'updated_at',
     ];
 
@@ -40,6 +40,8 @@ class BusinessInquiry extends Model
             'company' => $this->company,
             'email' => $this->email,
             'contactNumber' => $this->contact_number,
+            'city' => $this->city,
+            'country' => $this->country,
             'projectType' => $this->project_type,
             'budget' => $this->budget,
             'timeline' => $this->timeline,
@@ -61,6 +63,8 @@ class BusinessInquiry extends Model
                 ->orWhere('email', 'like', $like)
                 ->orWhere('company', 'like', $like)
                 ->orWhere('contact_number', 'like', $like)
+                ->orWhere('city', 'like', $like)
+                ->orWhere('country', 'like', $like)
                 ->orWhere('message', 'like', $like);
         });
     }

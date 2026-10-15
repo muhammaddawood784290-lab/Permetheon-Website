@@ -16,7 +16,7 @@
  *   - the daily schedule entry is registered.
  */
 
-const F8_ADMIN_ID = 'f8000000-0000-0000-0000-000000000001';
+const F8_ADMIN_ID = 1;
 
 function f8SeedAdmin(): void
 {
@@ -41,6 +41,7 @@ function f8Session(string $id, ?int $revokedDaysAgo, ?int $expiredDaysAgo, int $
 {
     App\Models\AdminSession::create([
         'id'                  => hash('sha256', $id),
+        'token_hash'          => hash('sha256', $id),
         'admin_id'            => F8_ADMIN_ID,
         'created_at'          => App\Support\Clock::format(time() - 40 * 24 * 3600),
         'last_seen_at'        => App\Support\Clock::format(time() - $seenDaysAgo * 24 * 3600),
@@ -53,7 +54,7 @@ function f8Session(string $id, ?int $revokedDaysAgo, ?int $expiredDaysAgo, int $
 
 function f8Exists(string $id): bool
 {
-    return App\Models\AdminSession::find(hash('sha256', $id)) !== null;
+    return App\Models\AdminSession::where('token_hash', hash('sha256', $id))->first() !== null;
 }
 
 it('F8: prunes long-revoked rows and long-expired rows, keeps live and recent ones', function () {
@@ -104,6 +105,7 @@ it('F8: a never-dead row is never pruned no matter how old its activity is', fun
     // 24h absolute lifetime and unrevoked — LIVE by definition.
     App\Models\AdminSession::create([
         'id'                  => hash('sha256', 'f8-ancient-live'),
+        'token_hash'          => hash('sha256', 'f8-ancient-live'),
         'admin_id'            => F8_ADMIN_ID,
         'created_at'          => App\Support\Clock::format(time() - 40 * 24 * 3600),
         'last_seen_at'        => App\Support\Clock::format(time() - 20 * 24 * 3600),

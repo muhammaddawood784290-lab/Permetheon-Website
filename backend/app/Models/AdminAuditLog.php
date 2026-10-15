@@ -31,4 +31,9 @@ class AdminAuditLog extends Model
 
         return parent::save($options);
     }
+
+    public function delete(): bool
+    {
+        throw new \LogicException('admin_audit_log is append-only.');
+    }
 }

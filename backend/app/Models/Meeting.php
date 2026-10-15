@@ -39,6 +39,11 @@ class Meeting extends Model
         'updated_at' => \App\Support\UtcDatetime::class,
     ];
 
+    public function inquiry()
+    {
+        return $this->belongsTo(BusinessInquiry::class, 'inquiry_id');
+    }
+
     /** camelCase serialization to match the JSON contract exactly (ISO 8601 UTC). */
     public function toArray(): array
     {

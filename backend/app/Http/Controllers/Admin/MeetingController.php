@@ -149,10 +149,13 @@ class MeetingController extends Controller
         $s = MeetingSetting::current();
 
         return ApiResponse::ok(['settings' => [
-            'workingDays' => $s->workingDays(),
-            'dayStartMinutes' => (int) $s->day_start_minutes,
-            'dayEndMinutes' => (int) $s->day_end_minutes,
-            'slotDurationMinutes' => (int) $s->slot_duration_minutes,
+            // The booking schedule (Mon-Fri, 09:00-20:00 UTC) is fixed and
+            // enforced by the engine. These values are reported for display.
+            'workingDays' => [1, 2, 3, 4, 5],
+            'dayStartMinutes' => 9 * 60,
+            'dayEndMinutes' => 20 * 60,
+            'slotDurationMinutes' => (int) $s->slot_interval_minutes,
+            'meetingDurationMinutes' => (int) $s->meeting_duration_minutes,
             'bookingWindowDays' => (int) $s->booking_window_days,
             'minLeadTimeMinutes' => (int) $s->min_lead_time_minutes,
             'enabled' => (bool) $s->enabled,
@@ -170,21 +173,9 @@ class MeetingController extends Controller
         $s = MeetingSetting::current();
         $errors = [];
 
-        $days = $body['workingDays'] ?? null;
-        if (is_array($days)) {
-            $days = array_values(array_unique(array_filter(array_map('intval', $days), fn ($d) => $d >= 0 && $d <= 6)));
-            if ($days === []) {
-                $errors['workingDays'] = 'Select at least one working day.';
-            } else {
-                sort($days);
-                $s->working_days = implode(',', $days);
-            }
-        }
-
         foreach ([
-            'dayStartMinutes' => 'day_start_minutes',
-            'dayEndMinutes' => 'day_end_minutes',
-            'slotDurationMinutes' => 'slot_duration_minutes',
+            'slotDurationMinutes' => 'slot_interval_minutes',
+            'meetingDurationMinutes' => 'meeting_duration_minutes',
             'bookingWindowDays' => 'booking_window_days',
             'minLeadTimeMinutes' => 'min_lead_time_minutes',
         ] as $key => $column) {
@@ -194,11 +185,11 @@ class MeetingController extends Controller
             }
         }
 
-        if ((int) $s->day_start_minutes >= (int) $s->day_end_minutes) {
-            $errors['dayEndMinutes'] = 'End of day must be after the start.';
-        }
-        if ((int) $s->slot_duration_minutes < 10 || (int) $s->slot_duration_minutes > 240) {
+        if ((int) $s->slot_interval_minutes < 10 || (int) $s->slot_interval_minutes > 240) {
             $errors['slotDurationMinutes'] = 'Slot duration must be between 10 and 240 minutes.';
+        }
+        if ((int) $s->meeting_duration_minutes < 10 || (int) $s->meeting_duration_minutes > 240) {
+            $errors['meetingDurationMinutes'] = 'Meeting duration must be between 10 and 240 minutes.';
         }
         if (isset($body['enabled'])) {
             $s->enabled = (bool) $body['enabled'];
@@ -212,7 +203,9 @@ class MeetingController extends Controller
         $s->save();
 
         \App\Services\AuditLog::record($request, 'availability.update', 'availability', null, [
-            'workingDays' => $s->workingDays(), 'enabled' => (bool) $s->enabled,
+            'enabled' => (bool) $s->enabled,
+            'slotDurationMinutes' => (int) $s->slot_interval_minutes,
+            'meetingDurationMinutes' => (int) $s->meeting_duration_minutes,
         ]);
 
         return $this->availabilitySettings();

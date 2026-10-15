@@ -100,7 +100,7 @@ it('F6: admin WRITE routes are not governed by the admin-read limiter', function
             'admin_session' => $a['session'],
             'admin_csrf'    => $a['csrf'],
         ])->withHeaders(['x-csrf-token' => $a['csrf']])
-            ->patchJson('/api/admin/inquiries/does-not-exist', ['status' => 'REVIEWING'])
+            ->patchJson('/api/admin/inquiries/999999', ['status' => 'REVIEWING'])
             ->assertStatus(404);
     }
 

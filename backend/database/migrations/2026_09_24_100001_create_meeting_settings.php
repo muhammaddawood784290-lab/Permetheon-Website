@@ -22,8 +22,9 @@ return new class extends Migration
             $table->bigIncrements('id');
             $table->string('working_days', 20)->default('1,2,3,4,5');
             $table->unsignedSmallInteger('day_start_minutes')->default(9 * 60);
-            $table->unsignedSmallInteger('day_end_minutes')->default(17 * 60);
-            $table->unsignedSmallInteger('slot_duration_minutes')->default(30);
+            $table->unsignedSmallInteger('day_end_minutes')->default(20 * 60);
+            $table->unsignedSmallInteger('slot_interval_minutes')->default(60);
+            $table->unsignedSmallInteger('meeting_duration_minutes')->default(30);
             $table->unsignedSmallInteger('booking_window_days')->default(30);
             $table->unsignedSmallInteger('min_lead_time_minutes')->default(120);
             $table->boolean('enabled')->default(true);
@@ -33,15 +34,16 @@ return new class extends Migration
 
         SchemaChecks::add('meeting_settings', [
             'chk_ms_days' => "working_days ~ '^[0-6](,[0-6])*$'",
-            'chk_ms_slot' => 'slot_duration_minutes BETWEEN 10 AND 240',
+            'chk_ms_slot' => 'meeting_duration_minutes BETWEEN 10 AND 240',
             'chk_ms_window' => 'day_start_minutes < day_end_minutes AND day_end_minutes <= 1440',
         ]);
 
         DB::table('meeting_settings')->insert([
             'working_days' => '1,2,3,4,5',
             'day_start_minutes' => 9 * 60,
-            'day_end_minutes' => 17 * 60,
-            'slot_duration_minutes' => 30,
+            'day_end_minutes' => 20 * 60,
+            'slot_interval_minutes' => 60,
+            'meeting_duration_minutes' => 30,
             'booking_window_days' => 30,
             'min_lead_time_minutes' => 120,
             'enabled' => true,

@@ -1,7 +1,7 @@
 /**
  * BUSINESS INQUIRY CONTRACT — single source of truth for the public form AND the API.
- * Canonical fields (spec §11 + Master amendment 2026-09-22): name · company · email ·
- * contact_number (canonical E.164, §15/§47) · project_type · budget · timeline · message.
+ * Canonical fields (spec §11 + Master amendment 2026-09-22, + city/country 2026-10-14): name · company · email ·
+ * contact_number (canonical E.164, §15/§47) · city · country · project_type · budget · timeline · message.
  * Pure and dependency-free so it runs identically client- and server-side; the API is
  * authoritative (§21/§23) — this module is the one implementation both layers share.
  *
@@ -62,6 +62,8 @@ export type InquirySubmission = {
   company: string | null;
   email: string;
   contactNumber: string;
+  city: string;
+  country: string;
   projectType: ProjectType;
   budget: string | null;
   timeline: string | null;
@@ -155,6 +157,8 @@ function containsMarkup(text: string): boolean {
  *   company      optional, trimmed, ≤150, empty → null
  *   email        required, trimmed + lowercased, valid format, ≤254
  *   contactNumber required, normalized to E.164 + structurally validated (§15/§47)
+ *   city         required, trimmed, 2–100, no script/markup
+ *   country      required, trimmed, 2–100, no script/markup
  *   projectType  required, enum
  *   budget       optional, enum, empty → null
  *   timeline     optional, enum, empty → null
@@ -178,6 +182,8 @@ export function validateInquiry(raw: unknown): {
   const company = asText(raw.company).trim();
   const email = asText(raw.email).trim().toLowerCase();
   const contactNumber = normalizeContactNumber(asText(raw.contactNumber));
+  const city = asText(raw.city).trim();
+  const country = asText(raw.country).trim();
   const projectType = asText(raw.projectType).trim();
   const budget = asText(raw.budget).trim();
   const timeline = asText(raw.timeline).trim();
@@ -203,6 +209,18 @@ export function validateInquiry(raw: unknown): {
   if (!contactNumber) errors.contactNumber = "Please enter your contact number.";
   else if (!isValidE164(contactNumber))
     errors.contactNumber = "Enter a valid international contact number, e.g. +12025550147.";
+
+  // city (required, plain text — 2026-10-14 amendment)
+  if (!city) errors.city = "Please enter your city.";
+  else if (city.length < 2) errors.city = "City must be at least 2 characters.";
+  else if (city.length > 100) errors.city = "City must be at most 100 characters.";
+  else if (containsMarkup(city)) errors.city = "City may not contain markup or code.";
+
+  // country (required, plain text — 2026-10-14 amendment)
+  if (!country) errors.country = "Please enter your country.";
+  else if (country.length < 2) errors.country = "Country must be at least 2 characters.";
+  else if (country.length > 100) errors.country = "Country must be at most 100 characters.";
+  else if (containsMarkup(country)) errors.country = "Country may not contain markup or code.";
 
   // projectType (required enum)
   if (!projectType) errors.projectType = "Select what you need built.";
@@ -234,6 +252,8 @@ export function validateInquiry(raw: unknown): {
       company: company === "" ? null : company,
       email,
       contactNumber,
+      city,
+      country,
       projectType: projectType as ProjectType,
       budget: budget === "" ? null : budget,
       timeline: timeline === "" ? null : timeline,

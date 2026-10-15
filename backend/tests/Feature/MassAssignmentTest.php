@@ -32,7 +32,7 @@ it('ignores privileged fields and persists server-controlled status/priority (ro
     $projected = array_keys($row->toArray());
     expect(sort($projected))->toBeTrue()
         ->and($projected)->toBe([
-            'budget', 'company', 'contactNumber', 'createdAt', 'email',
+            'budget', 'city', 'company', 'contactNumber', 'country', 'createdAt', 'email',
             'id', 'message', 'name', 'priority', 'projectType', 'status', 'timeline', 'updatedAt',
         ]);
 

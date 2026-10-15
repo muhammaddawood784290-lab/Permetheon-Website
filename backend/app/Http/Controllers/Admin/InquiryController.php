@@ -41,7 +41,10 @@ class InquiryController extends Controller
         }
 
         $total = $query->count();
-        $items = $query->orderByDesc('created_at')
+
+        $items = (clone $query)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->skip(($page - 1) * self::PAGE_SIZE)
             ->take(self::PAGE_SIZE)
             ->get();

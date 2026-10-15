@@ -3,6 +3,7 @@
 use App\Services\SchemaChecks;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /** 100003 — meetings: bookings, 1:1 with their inquiry (FK RESTRICT).

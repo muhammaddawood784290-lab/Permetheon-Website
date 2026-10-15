@@ -18,7 +18,7 @@ import {
  * Contracts enforced in the UI:
  *  - slot interval = 60 minutes (slotDurationMinutes from the API)
  *  - meeting duration = 30 minutes (UI always shows a 30-minute block)
- *  - all times UTC, 24-hour, no timezone/local conversion
+ *  - 24-hour format, no timezone/local conversion
  *  - displayed slot starts are on full-hour boundaries only; :30 start times
  *    never appear in the picker
  *
@@ -214,7 +214,16 @@ export function MeetingBookingSection({
   }, [availability, openDays]);
 
   const todayStr = utcToday();
+  const selectedSlot = useMemo(() => {
+  if (!selection) return null;
 
+  const { date } = splitSlot(selection.startsAt);
+  const day = availability?.days.find((d) => d.date === date);
+
+  return day?.slots.find(
+    (slot) => slot.startsAt === selection.startsAt
+  ) ?? null;
+}, [availability, selection]);
   return (
     <section
       aria-label="Optional meeting booking"
@@ -281,14 +290,14 @@ export function MeetingBookingSection({
               Example available times (UI contract):
               {" "}
               <ul className="mt-1 flex flex-wrap list-none gap-x-4 gap-y-1">
-                <li>09:00 UTC → 09:30 UTC</li>
-                <li>10:00 UTC → 10:30 UTC</li>
-                <li>11:00 UTC → 11:30 UTC</li>
-                <li>12:00 UTC → 12:30 UTC</li>
-                <li>13:00 UTC → 13:30 UTC</li>
-                <li>14:00 UTC → 14:30 UTC</li>
+                <li>09:00 → 09:30</li>
+                <li>10:00 → 10:30</li>
+                <li>11:00 → 11:30</li>
+                <li>12:00 → 12:30</li>
+                <li>13:00 → 13:30</li>
+                <li>14:00 → 14:30</li>
               </ul>
-              <span className="block mt-1 text-[10px]">All times are UTC. Slot interval = 60 minutes; meeting = 30 minutes.</span>
+              <span className="block mt-1 text-[10px]">Slot interval = 60 minutes; meeting = 30 minutes.</span>
             </div>
 
             {/* Calendar navigation */}
@@ -304,7 +313,7 @@ export function MeetingBookingSection({
                   ←
                 </button>
                 <span className="text-sm font-semibold text-ink">
-                  {formatMonthGridDate(viewAnchor)} <span className="text-fog font-normal">(UTC)</span>
+                  {formatMonthGridDate(viewAnchor)}
                 </span>
                 <button
                   type="button"
@@ -399,7 +408,7 @@ export function MeetingBookingSection({
                     {formatLongDate(selectedDay.date)} <span className="normal-case tracking-normal">· {dayName(selectedDay.dayOfWeek)}</span>
                   </p>
                   <p className="mt-1 text-sm text-ink">
-                    Available times — UTC
+                    Available times
                   </p>
                 </div>
                 <p className="text-xs text-fog">
@@ -435,12 +444,12 @@ export function MeetingBookingSection({
                     >
                       <span className="block font-semibold">{formatTime12h(time)}</span>
                       <span className="block text-fog text-xs">→ {formatTime12h(splitSlot(s.endsAt).time)}</span>
-                      <span className="block text-[10px] uppercase tracking-[0.14em] text-fog mt-1">UTC</span>
                     </button>
                   );
                 })}
               </div>
             ) : null}
+
 
             {/* Selected meeting summary */}
             {selection ? (
@@ -452,13 +461,9 @@ export function MeetingBookingSection({
                   {formatLongDate(splitSlot(selection.startsAt).date)}
                 </p>
                 <p className="mt-1 text-sm text-ink font-mono">
-                  {formatTime12h(splitSlot(selection.startsAt).time)}–{formatTime12h(
-                    splitSlot(
-                      selectedDay?.slots.find((s) => s.startsAt === selection.startsAt)?.endsAt ??
-                        selection.startsAt,
-                    ).time,
-                  )}{" "}
-                  UTC
+                 {formatTime12h(splitSlot(selection.startsAt).time)}–{formatTime12h(
+                    splitSlot(selectedSlot?.endsAt ?? selection.startsAt).time
+                  )}
                 </p>
                 <p className="mt-1 text-xs text-fog">
                   {slotMinutes}-minute slot · 30-minute meeting
@@ -483,7 +488,7 @@ export function MeetingBookingSection({
 /** Submit-button label reflecting the meeting selection (spec §11). */
 export function submitLabel(hasMeeting: boolean, submitting: boolean): string {
   if (submitting) return "Sending…";
-  return hasMeeting ? "Send Inquiry & Book Meeting →" : "Send Inquiry →";
+  return hasMeeting ? "Submit Inquiry & Book Meeting →" : "Submit Inquiry →";
 }
 
 const CHIPS = {

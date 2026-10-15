@@ -23,7 +23,7 @@ it('computes a full calendar: working days open, weekends NON_WORKING, slots on 
     $cal = MeetingAvailability::make()->calendar();
 
     expect($cal['timezone'])->toBe('UTC')
-        ->and($cal['slotDurationMinutes'])->toBe(30)
+        ->and($cal['slotDurationMinutes'])->toBe(60)
         ->and($cal['enabled'])->toBeTrue()
         ->and(count($cal['days']))->toBe(31); // booking window default
 
@@ -33,8 +33,8 @@ it('computes a full calendar: working days open, weekends NON_WORKING, slots on 
     $open = collect($cal['days'])->first(fn ($d) => $d['status'] === 'OPEN');
     expect($open)->not->toBeNull();
     $times = array_column($open['slots'], 'startsAt');
-    expect($times[0])->toEndWith('T09:00:00Z')       // day_start_minutes = 540 (UTC)
-        ->and(end($times))->toEndWith('T16:30:00Z'); // last slot ENDING by 17:00 UTC
+    expect($times[0])->toEndWith('T09:00:00Z')       // 09:00 UTC — enforced opening
+        ->and(end($times))->toEndWith('T19:00:00Z'); // last slot STARTING at 19:00 UTC (ends 19:30, before 20:00)
 });
 
 it('marks past slots PAST in the calendar and honors the lead time', function () {
@@ -47,7 +47,7 @@ it('marks past slots PAST in the calendar and honors the lead time', function ()
         // inside the minimum lead-time window (the same rule the hermetic
         // lead-time check below exercises). Asserting the full contract — not
         // just "already ended" — so the test holds at any wall-clock time.
-        $lead = (int) MeetingSetting::query()->findOrFail('singleton')->min_lead_time_minutes;
+        $lead = (int) MeetingSetting::query()->first()->min_lead_time_minutes;
         $now = Carbon::now('UTC');
         foreach ($today['slots'] as $s) {
             $unselectable = Carbon::parse($s['endsAt'], 'UTC')->lte($now)
@@ -59,20 +59,42 @@ it('marks past slots PAST in the calendar and honors the lead time', function ()
     // Engine (hermetic): widen working hours to the full day so the upcoming
     // GRID slot — less than 120 minutes out — hits the LEAD-TIME guard
     // regardless of the wall-clock time the suite runs at. ISO 8601 UTC in.
-    MeetingSetting::query()->where('id', 'singleton')->update([
+    MeetingSetting::query()->first()->update([
         'day_start_minutes' => 0,
         'day_end_minutes'   => 1440,
     ]);
-    $soon = Carbon::now('UTC')->addMinutes(30);
-    $soon->minute = intdiv((int) $soon->format('i'), 30) * 30; // snap to grid
-    if ($soon->format('Y-m-d H:i') === Carbon::now('UTC')->format('Y-m-d H:i')) {
-        $soon->addMinutes(30); // ensure it is strictly in the future
-    }
+
+    $lead = (int) MeetingSetting::query()->first()->min_lead_time_minutes;
+
+    // Use a deterministic, fixed UTC clock to avoid fragile conditional logic.
+    // Base time: 2026-10-05 14:30:00 UTC.
+    $fixedNow = Carbon::create(2026, 10, 5, 14, 30, 0, 'UTC');
+    Carbon::setTestNow($fixedNow);
+
     try {
+        // Pick the next hourly slot: 2026-10-05 15:00:00 UTC.
+        // This is 30 minutes in the future.
+        // If min_lead_time_minutes is 60 (standard), this should trigger the "too soon" guard.
+        $soon = $fixedNow->copy()->ceilHour();
+
+        // Ensure $soon is strictly in the future and within the lead time.
+        // If the fixed time was exactly on the hour, ceilHour returns same time.
+        if ($soon->lte($fixedNow)) {
+            $soon->addHour();
+        }
+
+        // Final check: ensure it's actually too soon.
+        if ($soon->diffInMinutes($fixedNow) >= $lead) {
+            // If the gap is too large, move the clock forward to force the conflict.
+            Carbon::setTestNow($soon->copy()->subMinutes($lead - 1));
+        }
+
         MeetingAvailability::make()->assertBookable($soon->format('Y-m-d\TH:i:00\Z'));
         $this->fail('Expected lead-time conflict.');
     } catch (\App\Services\MeetingConflictException $e) {
         expect(str_contains($e->getMessage(), 'too soon'))->toBeTrue();
+    } finally {
+        Carbon::setTestNow(); // Restore clock
     }
 
     // A fully-past slot is rejected too (legacy 'Y-m-d H:i' tolerance path).
@@ -103,13 +125,113 @@ it('rejects booking outside working hours / non-grid times', function () {
         expect(str_contains($e->getMessage(), 'outside working hours'))->toBeTrue();
     }
 
-    // 17:30 starts after day_end (17:00).
+    // 20:30 starts after 20:00 — meeting would end at 21:00, past closing.
     try {
-        MeetingAvailability::make()->assertBookable(substr($slot, 0, 11) . '17:30');
+        MeetingAvailability::make()->assertBookable(substr($slot, 0, 11) . '20:30');
         $this->fail('Expected after-hours conflict.');
     } catch (\App\Services\MeetingConflictException $e) {
         expect(str_contains($e->getMessage(), 'outside working hours'))->toBeTrue();
     }
+
+    // 19:00 is the last valid slot: starts at 19:00, ends at 19:30 (before 20:00).
+    MeetingAvailability::make()->assertBookable(substr($slot, 0, 11) . '19:00');
+    // 20:00 is rejected: starts at 20:00, ends at 20:30 (past 20:00 closing).
+    try {
+        MeetingAvailability::make()->assertBookable(substr($slot, 0, 11) . '20:00');
+        $this->fail('Expected after-hours conflict for 20:00 slot.');
+    } catch (\App\Services\MeetingConflictException $e) {
+        expect(str_contains($e->getMessage(), 'outside working hours'))->toBeTrue();
+    }
+});
+
+
+it('rejects weekend bookings: Saturday and Sunday are unavailable', function () {
+    // Saturday (day 6) — must be rejected.
+    $saturday = Illuminate\Support\Carbon::now('UTC')->addDays(12)->dayOfWeek(Illuminate\Support\Carbon::SATURDAY);
+    $satSlot = $saturday->format('Y-m-d') . 'T10:00:00Z';
+    try {
+        MeetingAvailability::make()->assertBookable($satSlot);
+        $this->fail('Expected weekend conflict for Saturday.');
+    } catch (\App\Services\MeetingConflictException $e) {
+        expect(str_contains($e->getMessage(), 'not a working day'))->toBeTrue();
+    }
+
+    // Sunday (day 0) — must be rejected.
+    $sunday = Illuminate\Support\Carbon::now('UTC')->addDays(13)->dayOfWeek(Illuminate\Support\Carbon::SUNDAY);
+    $sunSlot = $sunday->format('Y-m-d') . 'T10:00:00Z';
+    try {
+        MeetingAvailability::make()->assertBookable($sunSlot);
+        $this->fail('Expected weekend conflict for Sunday.');
+    } catch (\App\Services\MeetingConflictException $e) {
+        expect(str_contains($e->getMessage(), 'not a working day'))->toBeTrue();
+    }
+
+    // Monday (day 1) at 10:00 — should be accepted (if not in past/lead time).
+    $monday = Illuminate\Support\Carbon::now('UTC')->addDays(14)->dayOfWeek(Illuminate\Support\Carbon::MONDAY);
+    $monSlot = $monday->format('Y-m-d') . 'T10:00:00Z';
+    // This may fail due to lead time / past — we just check it's NOT a "not a working day" error.
+    try {
+        MeetingAvailability::make()->assertBookable($monSlot);
+        // Accepted — weekday is fine.
+    } catch (\App\Services\MeetingConflictException $e) {
+        expect(str_contains($e->getMessage(), 'not a working day'))->toBeFalse();
+    }
+});
+
+it('enforces 09:00 opening boundary: 08:00 rejected, 09:00 accepted', function () {
+    $slot = futureSlot(5);
+
+    // 08:00 is before opening — rejected.
+    try {
+        MeetingAvailability::make()->assertBookable(substr($slot, 0, 11) . '08:00');
+        $this->fail('Expected outside-hours conflict for 08:00.');
+    } catch (\App\Services\MeetingConflictException $e) {
+        expect(str_contains($e->getMessage(), 'outside working hours'))->toBeTrue();
+    }
+
+    // 09:00 is the opening time — accepted (if not in past/lead time).
+    MeetingAvailability::make()->assertBookable(substr($slot, 0, 11) . '09:00');
+});
+
+it('last valid slot is 19:00: 19:00 accepted, 20:00 rejected (meeting would end at 20:30)', function () {
+    $slot = futureSlot(5);
+
+    // 19:00 — meeting ends at 19:30, before 20:00 closing — accepted.
+    MeetingAvailability::make()->assertBookable(substr($slot, 0, 11) . '19:00');
+
+    // 20:00 — meeting ends at 20:30, past 20:00 closing — rejected.
+    try {
+        MeetingAvailability::make()->assertBookable(substr($slot, 0, 11) . '20:00');
+        $this->fail('Expected after-hours conflict for 20:00.');
+    } catch (\App\Services\MeetingConflictException $e) {
+        expect(str_contains($e->getMessage(), 'outside working hours'))->toBeTrue();
+    }
+});
+
+it('meeting duration remains 30 minutes and booking behavior unchanged', function () {
+    $slot = futureSlot(5, '14:00');
+
+    $availability = MeetingAvailability::make();
+    $inquiry = createInquiry('Duration Test');
+
+    $meeting = $availability->bookForInquiry($inquiry->id, $slot, 30);
+    expect($meeting->duration_minutes)->toBe(30)
+        ->and($meeting->status)->toBe('BOOKED')
+        ->and($meeting->starts_at->format('Y-m-d\TH:i'))->toBe(substr($slot, 0, 11) . '14:00');
+});
+
+it('calendar shows no slots on weekends (Sat/Sun are NON_WORKING)', function () {
+    $cal = MeetingAvailability::make()->calendar();
+
+    $saturday = collect($cal['days'])->first(fn ($d) => $d['dayOfWeek'] === 6);
+    $sunday = collect($cal['days'])->first(fn ($d) => $d['dayOfWeek'] === 0);
+
+    expect($saturday)->not->toBeNull()->and($saturday['status'])->toBe('NON_WORKING')->and($saturday['slots'])->toBe([]);
+    expect($sunday)->not->toBeNull()->and($sunday['status'])->toBe('NON_WORKING')->and($sunday['slots'])->toBe([]);
+
+    // A weekday should have slots.
+    $monday = collect($cal['days'])->first(fn ($d) => $d['dayOfWeek'] === 1);
+    expect($monday)->not->toBeNull()->and($monday['status'])->toBeIn(['OPEN', 'FULL'])->and(count($monday['slots']))->toBeGreaterThan(0);
 });
 
 it('blocks: whole-day block suppresses every slot; slot block suppresses one', function () {
@@ -192,7 +314,7 @@ it('cancellation frees the slot: re-booking succeeds, history preserved (spec §
 
     $meeting = $availability->bookForInquiry($a->id, $slot, 30);
 
-    $cancelled = MeetingPolicy::cancel($meeting, 'admin-1', 'Customer rescheduled.');
+    $cancelled = MeetingPolicy::cancel($meeting, 1, 'Customer rescheduled.');
     expect($cancelled->status)->toBe('CANCELLED')
         ->and($cancelled->cancelled_reason)->toBe('Customer rescheduled.')
         ->and($cancelled->cancelled_at)->not->toBeNull();
@@ -200,7 +322,7 @@ it('cancellation frees the slot: re-booking succeeds, history preserved (spec §
     // The slot is bookable again…
     $b = createInquiry('Rebook Success');
     $rebooked = $availability->bookForInquiry($b->id, $slot, 30);
-    expect($rebooked->status)->toBe('BOOKED')->and($rebooked->inquiry_id)->toBe($b->id);
+    expect($rebooked->status)->toBe('BOOKED')->and((int) $rebooked->inquiry_id)->toBe($b->id);
 
     // …and the cancelled row still exists (history preserved).
     expect(Meeting::query()->find($meeting->id))->not->toBeNull();
@@ -219,7 +341,7 @@ it('inquiry deletion policy: no meeting → delete; with meeting → meeting del
     $slot = futureSlot(8);
     $live = createInquiry('With Live Meeting');
     $availability->bookForInquiry($live->id, $slot, 30);
-    $outcome = MeetingPolicy::deleteInquiry($live, 'admin-1');
+    $outcome = MeetingPolicy::deleteInquiry($live, 1);
     expect($outcome)->toBe('deleted')
         ->and(BusinessInquiry::find($live->id))->toBeNull()
         ->and(Meeting::query()->where('inquiry_id', $live->id)->count())->toBe(0);
@@ -237,7 +359,7 @@ it('inquiry deletion policy: no meeting → delete; with meeting → meeting del
     $guarded = createInquiry('Guarded');
     $availability->bookForInquiry($guarded->id, $slot2, 30);
     try {
-        MeetingPolicy::deleteInquiry($guarded, 'admin-1');
+        MeetingPolicy::deleteInquiry($guarded, 1);
         $this->fail('Expected prevent-policy conflict.');
     } catch (\App\Services\MeetingConflictException $e) {
         expect(str_contains($e->getMessage(), 'Cancel the meeting first'))->toBeTrue();
@@ -247,7 +369,7 @@ it('inquiry deletion policy: no meeting → delete; with meeting → meeting del
     // …but once the meeting is cancelled (normal operational path), deletion
     // goes through.
     $m = Meeting::query()->where('inquiry_id', $guarded->id)->first();
-    MeetingPolicy::cancel($m, 'admin-1', 'rescheduled');
+    MeetingPolicy::cancel($m, 1, 'rescheduled');
     expect(MeetingPolicy::deleteInquiry($guarded, 'admin-1'))->toBe('deleted');
     expect(Meeting::query()->where('inquiry_id', $guarded->id)->count())->toBe(0);
 });
@@ -262,17 +384,24 @@ it('status transitions are validated: BOOKED→COMPLETED ok, terminal states fro
 });
 
 it('disabling meeting settings closes the whole calendar', function () {
-    MeetingSetting::query()->where('id', 'singleton')->update(['enabled' => false]);
+    MeetingSetting::query()->first()->update(['enabled' => false]);
 
     $cal = MeetingAvailability::make()->calendar();
-    expect($cal['enabled'])->toBeFalse();
+
+    expect($cal['enabled'])->toBeFalse()
+        ->and(
+            collect($cal['days'])
+                ->flatMap(fn ($day) => $day['slots'])
+                ->contains(fn ($slot) => $slot['status'] === 'AVAILABLE')
+        )->toBeFalse();
 
     try {
         MeetingAvailability::make()->assertBookable(futureSlot(3));
+
         $this->fail('Expected disabled conflict.');
     } catch (\App\Services\MeetingConflictException $e) {
         expect(str_contains($e->getMessage(), 'unavailable'))->toBeTrue();
     }
 
-    MeetingSetting::query()->where('id', 'singleton')->update(['enabled' => true]);
+    MeetingSetting::query()->first()->update(['enabled' => true]);
 });

@@ -17,7 +17,7 @@ class MeetingSetting extends Model
 
     protected $fillable = [
         'working_days', 'day_start_minutes', 'day_end_minutes',
-        'slot_duration_minutes', 'booking_window_days', 'min_lead_time_minutes',
+        'slot_interval_minutes', 'meeting_duration_minutes', 'booking_window_days', 'min_lead_time_minutes',
         'enabled', 'created_at', 'updated_at',
     ];
 

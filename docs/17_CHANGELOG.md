@@ -4,6 +4,17 @@ Format: date — change — traceability (Master source → document). Append-on
 
 ---
 
+## 2026-10-14 — City + Country added to the inquiry contract (form → DB → admin dashboard)
+
+- **Requirement:** the public form already rendered `City *` / `Country *` inputs and included them in the POST payload, but the backend contract never carried them: `StoreInquiryRequest` had no rules for the two fields, `canonicalPayload()` silently stripped them (mass-assignment protection), no DB columns existed, `BusinessInquiry::toArray()` did not project them, and the admin UI had no type/rendering for them. Values were lost at the validation boundary.
+- **Additive migration `2026_10_14_000001_add_city_country_to_business_inquiries`:** two NULLABLE `varchar(100)` columns (`city`, `country`) after `contact_number` + two named length CHECKs (`chk_inquiries_city_length` / `chk_inquiries_country_length`, `NULL OR CHAR_LENGTH BETWEEN 2 AND 100`) via `SchemaChecks`. No existing column altered, no existing row touched; legacy inquiries keep NULL and the dashboard shows an honest "Not provided" (same pattern as the contact-number amendment, §44).
+- **Validation parity:** `city`/`country` are required, trimmed, 2–100 chars, markup-banned — rules and messages byte-identical between the shared TS contract (`src/lib/inquiries.ts`) and `StoreInquiryRequest` (§21/§22). `canonicalPayload()` persists both; `BusinessInquiry` fillable/`toArray()`/search scope extended (camelCase wire contract unchanged otherwise). Admin PATCH cannot overwrite them (status/priority only).
+- **Admin dashboard:** `Inquiry` type gains `city`/`country` (nullable for legacy rows); detail panel shows dedicated City/Country rows with "Not provided" fallback; list rows gain a muted ` · City, Country` segment shown only when values exist.
+- **Tests:** `VALID_INQUIRY` fixture + e2e payloads extended; `MassAssignmentTest` exact-projection list updated; `InquiryValidationTest` boundary table gains 8 city/country rows (missing/1-char/101-char/markup per field); new `AdminApiTest` round-trip pins list+show carrying trimmed values and PATCH being unable to alter them.
+- Traceability: owner-approved requirement 2026-10-14 (public inquiry → database → admin dashboard data flow); no Master spec change.
+
+---
+
 ## 2026-09-29 — Tooling hygiene fixes carried from the Ver 3 2 workspace session
 
 Fixes developed in a parallel workspace copy, transposed here with THIS checkout's layout (backend dir = `skeleton/`, legacy/ archive present — NOT the copy's `backend/` naming):

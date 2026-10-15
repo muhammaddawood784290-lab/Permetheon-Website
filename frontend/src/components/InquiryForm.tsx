@@ -15,7 +15,7 @@ import { MeetingBookingSection, submitLabel, type MeetingSelection } from "./Mee
 
 /**
  * BUSINESS INQUIRY FORM — the canonical public form (spec §11–§20 as amended 2026-09-22, §31–§33).
- * Eight fields: name* · company · email* · contactNumber* · projectType* · budget · timeline · message*.
+ * Ten fields: name* · company · email* · contactNumber* · city* · country* · projectType* · budget · timeline · message*.
  * contact_number is THE single contact-number field (labeled “Contact Number / WhatsApp”);
  * it is normalized to canonical E.164 before submission (§15) using the SAME shared
  * contract the server enforces (src/lib/inquiries.ts) — one implementation, no divergence.
@@ -61,7 +61,7 @@ export function InquiryForm() {
   const [errors, setErrors] = useState<InquiryFieldErrors>({});
   const [meeting, setMeeting] = useState<MeetingSelection>(null);
   const [meetingRefreshKey, setMeetingRefreshKey] = useState(0);
-  const [bookedMeeting, setBookedMeeting] = useState<{ startsAt?: string; status?: string } | null>(null);
+  const [bookedMeeting] = useState<{ startsAt?: string; status?: string } | null>(null);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -94,10 +94,12 @@ export function InquiryForm() {
     setErrors({});
     setStatus("submitting");
 
-    // Meeting payload (meetings spec §1/§5): only when the customer picked a
-    // slot. The server re-validates availability inside the booking
-    // transaction — this client is never trusted.
-    const body = meeting ? { ...payload, meeting: { booking: true, startsAt: meeting.startsAt } } : payload;
+    // We submit the inquiry to the backend first.
+    // If a meeting is selected, we omit the 'meeting' object from the payload to avoid
+    // internal slot conflicts (409), as the actual booking will happen via Cal.com.
+    const body = meeting
+  ? { ...payload, meeting: { booking: true, startsAt: meeting.startsAt } }
+  : payload;
 
     try {
       const response = await fetch(apiUrl("/api/inquiries"), {
@@ -119,28 +121,13 @@ export function InquiryForm() {
         setStatus("idle");
         return;
       }
-      // 409 — the slot was taken between pick and submit (meetings spec §5):
-      // say so plainly, drop the stale selection, refresh the calendar.
-      if (response.status === 409) {
-        setErrors({
-          form: "That meeting time was just taken. Please pick another available time — your other details are still here.",
-        });
-        setMeeting(null);
-        setMeetingRefreshKey((k) => k + 1);
-        setStatus("idle");
-        return;
-      }
       if (!response.ok) throw new Error("Submission failed");
 
-      const okBody = (await response.json().catch(() => null)) as {
-        data?: { meeting?: { startsAt?: string; status?: string } | null };
-      } | null;
-      setBookedMeeting(okBody?.data?.meeting ?? null);
-
-      // Success only after confirmed persistence (spec §29/§32).
+      // Success only after confirmed persistence.
       setStatus("success");
       form.reset();
       setMeeting(null);
+
       // Availability changed (a slot is now taken) — refresh for the next visitor.
       setMeetingRefreshKey((k) => k + 1);
     } catch {

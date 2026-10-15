@@ -30,7 +30,7 @@ beforeEach(function () {
     // every unmatched GET, so test-registered GET routes are unreachable —
     // the unknown-api-path behavior is covered separately below.
     Route::post('api/__test/missing', function () {
-        return BusinessInquiry::query()->findOrFail('00000000-0000-0000-0000-000000000000');
+        return BusinessInquiry::query()->findOrFail(999999);
     });
 
     // A route behind the GENERIC throttle (no custom response → the limiter

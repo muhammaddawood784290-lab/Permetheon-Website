@@ -22,7 +22,6 @@ use App\Support\Clock;
 use App\Support\PasswordPolicy;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Mockery;
 
 
 
@@ -103,14 +102,6 @@ it('F4: admin:unlock clears an active lock so the account can log in again', fun
 
     Log::spy();
 
-    // Pre-allow log levels other than 'warning' that this test run may touch
-    // (framework exception handler, scheduler, cache misses, etc.). Without these
-    // the spy rejects any un-expected level and the test fails on noise rather
-    // than on the behavior under test.
-    foreach (['error', 'critical', 'notice', 'debug', 'emergency', 'alert', 'info'] as $level) {
-        Mockery::allow('Illuminate\Support\Facades\LogManager')->toReceive($level);
-    }
-
     $this->artisan('admin:unlock', ['email' => 'owner@permetheon.test'])
         ->expectsOutputToContain('Lock cleared')
         ->assertSuccessful();
@@ -134,19 +125,6 @@ it('F4: the lock engages after 5 failures and is visible in the log; unknown ema
     // Spy: record every Log::warning call so both the lockout-engaged and
     // lockout-cleared lines can be asserted without a strict mock rejecting them.
     Log::spy();
-
-    // Pre-allow log levels other than 'warning' that this test run may touch
-    // (framework exception handler, scheduler, cache misses, etc.). Without these
-    // the spy rejects any un-expected level and the test fails on noise rather
-    // than on the behavior under test.
-    foreach (['error', 'critical', 'notice', 'debug', 'emergency', 'alert', 'info'] as $level) {
-        Mockery::allow('Illuminate\Support\Facades\LogManager')->toReceive($level);
-    }
-
-    // Also pre-clear whatever stale expectations the previous test left on the
-    // logger so this spy starts from a clean state (Mockery spies are shared
-    // across the test lifecycle).
-    Mockery::close();
 
     for ($i = 0; $i < 5; $i++) {
         $this->postJson('/api/admin/auth/login', ['email' => 'owner@permetheon.test', 'password' => 'wrong'])

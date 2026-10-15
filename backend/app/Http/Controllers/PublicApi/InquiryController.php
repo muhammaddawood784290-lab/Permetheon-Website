@@ -78,7 +78,7 @@ class InquiryController extends Controller
 
                 if ($meetingWanted && $meetingStartsAt !== null) {
                     $settings = \App\Models\MeetingSetting::current();
-                    $availability->bookForInquiry($inquiry->id, $meetingStartsAt, (int) $settings->slot_duration_minutes);
+                    $availability->bookForInquiry($inquiry->id, $meetingStartsAt, (int) $settings->meeting_duration_minutes);
 
                     return ['inquiry' => $inquiry, 'meeting' => \App\Support\MeetingTime::toWire(\Illuminate\Support\Carbon::parse($meetingStartsAt, \App\Support\MeetingTime::TZ))];
                 }

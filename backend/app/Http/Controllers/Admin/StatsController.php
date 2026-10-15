@@ -18,22 +18,17 @@ class StatsController extends Controller
 
     public function index(): JsonResponse
     {
-        // MongoDB has no `SELECT status, COUNT(*) … GROUP BY status`. The driver's
-        // ->groupBy() compiles to a $group stage whose key lands in `_id`
-        // (as {_id: {status: …}}) and whose accumulator is emitted under the
-        // literal field name `aggregate` (see Query\Builder::aggregate()).
-        // Unknown statuses are ignored, exactly as the SQL version did.
+        // PostgreSQL-compatible aggregation; preserve the complete status vocabulary.
         $byStatus = array_fill_keys(self::STATUSES, 0);
         $rows = BusinessInquiry::query()
-            ->aggregateByGroup('count')
+            ->selectRaw('status, COUNT(*) as aggregate')
             ->groupBy('status')
             ->get();
 
         foreach ($rows as $row) {
-            $bucket = $row->_id ?? null;
-            $status = is_object($bucket) ? ($bucket->status ?? null) : (is_array($bucket) ? ($bucket['status'] ?? null) : $bucket);
+            $status = (string) ($row->status ?? '');
             $count = $row->aggregate ?? null;
-            if (is_string($status) && array_key_exists($status, $byStatus) && $count !== null) {
+            if (array_key_exists($status, $byStatus) && $count !== null) {
                 $byStatus[$status] = (int) $count;
             }
         }
