@@ -405,3 +405,22 @@ it('disabling meeting settings closes the whole calendar', function () {
 
     MeetingSetting::query()->first()->update(['enabled' => true]);
 });
+
+it('prevents BOOKED and COMPLETED meetings from holding the same slot', function () {
+    $slot = futureSlot(3);
+
+    $first = createInquiry('Booked slot');
+    $booked = MeetingAvailability::make()->bookForInquiry($first->id, $slot, 30);
+
+    expect($booked->status)->toBe('BOOKED');
+
+    $second = createInquiry('Completed slot');
+
+    expect(fn () => Meeting::query()->create([
+        'inquiry_id' => $second->id,
+        'starts_at' => $booked->starts_at,
+        'ends_at' => $booked->ends_at,
+        'status' => 'COMPLETED',
+    ]))->toThrow(\Illuminate\Database\QueryException::class);
+});
+
