@@ -1,21 +1,50 @@
-// CLIENT-ONLY SHELL GENERATOR (postbuild).
-// /admin and /system are NOT prerendered (noindex, client-only). Serving them
-// the prerendered index.html shell causes React #418: the baked root content +
-// __staticRouterHydrationData belong to the homepage route, not the client
-// route. This script emits admin-shell.html: same head/assets, EMPTY root,
-// no hydration data — the Laravel SPA host serves it for client-only routes.
-import { readFileSync, writeFileSync } from "node:fs";
+// CLIENT-ONLY ADMIN SHELL GENERATOR.
+// Generate an empty React root for admin pages so the homepage's
+// prerendered content and hydration data are not reused on admin routes.
 
-let html = readFileSync("dist/index.html", "utf8");
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+} from "node:fs";
+import { join } from "node:path";
+
+const dist = "dist";
+const shellPath = join(dist, "index.html");
+
+if (!existsSync(shellPath)) {
+  throw new Error(`[admin-shell] Missing ${shellPath}. Run the frontend build first.`);
+}
+
+let html = readFileSync(shellPath, "utf8");
+
+// Remove prerendered root content and leave an empty client-side root.
 html = html.replace(
-  /<div id="root" data-server-rendered="true">[\s\S]*?<\/div>\s*(?=<script|$)/i,
-  '<div id="root"></div>\n',
+  /<div id="root"[^>]*>[\s\S]*?<\/div>/i,
+  '<div id="root"></div>',
 );
+
+// Remove any route-specific hydration payload.
 html = html.replace(
-  /<script>window\.__staticRouterHydrationData[\s\S]*?<\/script>/g,
+  /<script>\s*window\.__staticRouterHydrationData\s*=[\s\S]*?<\/script>/g,
   "",
 );
-writeFileSync("dist/admin-shell.html", html);
-console.log(
-  `[admin-shell] wrote dist/admin-shell.html (${html.length} bytes, empty root, no hydration data)`,
-);
+
+// Generate the shared shell.
+const shellPathOut = join(dist, "admin-shell.html");
+writeFileSync(shellPathOut, html);
+
+// Replace only the generated admin HTML pages, keeping the original files
+// available in Git and leaving unrelated public pages untouched.
+for (const page of ["meetings.html", "users.html"]) {
+  const pagePath = join(dist, "admin", page);
+
+  if (existsSync(pagePath)) {
+    writeFileSync(pagePath, html);
+    console.log(`[admin-shell] updated dist/admin/${page}`);
+  } else {
+    console.warn(`[admin-shell] ${pagePath} not found; skipped`);
+  }
+}
+
+console.log("[admin-shell] generated client-only admin shells");
